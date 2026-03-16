@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Candidate Sourcing Pipeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#03070F;--surface:#080f1c;--surface2:#0d1829;--surface3:#111e30;
+      --border:#1a2d45;--border2:#223552;
+      --cyan:#22d3ee;--cyan-dim:#0e8ba3;--cyan-glow:rgba(34,211,238,.15);
+      --orange:#fb923c;--orange-dim:#c05e1e;
+      --teal:#2dd4bf;--green:#4ade80;--green-dim:#166534;--green-glow:rgba(74,222,128,.12);
+      --gold:#fbbf24;--gold-dim:#92400e;--gold-glow:rgba(251,191,36,.12);
+      --red:#f87171;--red-dim:#7f1d1d;--red-glow:rgba(248,113,113,.12);
+      --purple:#a78bfa;--purple-dim:#4c1d95;
+      --text:#cbd5e1;--text-dim:#64748b;--text-bright:#f1f5f9;
+      --font-head:'Cormorant Garamond',serif;
+      --font-body:'DM Sans',sans-serif;
+      --font-mono:'IBM Plex Mono',monospace;
+      --radius:6px;--radius-lg:12px;--tr:0.2s ease;
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.6;min-height:100vh}
+    h1,h2,h3,h4{font-family:var(--font-head);color:var(--text-bright);line-height:1.2}
+    h1{font-size:2.8rem;font-weight:700}h2{font-size:1.8rem;font-weight:600}h3{font-size:1.3rem;font-weight:600}
+    .mono{font-family:var(--font-mono)}
+    .page-wrap{max-width:1200px;margin:0 auto;padding:0 24px 80px}
+    header{border-bottom:1px solid var(--border);padding:32px 0 28px;margin-bottom:48px}
+    .header-inner{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:var(--cyan-glow);border:1px solid var(--cyan-dim);border-radius:20px;padding:4px 14px;font-family:var(--font-mono);font-size:11px;color:var(--cyan);letter-spacing:.06em;text-transform:uppercase}
+    .badge-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+    .header-subtitle{color:var(--text-dim);font-size:14px;margin-top:6px;font-family:var(--font-mono);letter-spacing:.04em}
+    .input-grid{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start;margin-bottom:32px}
+    @media(max-width:900px){.input-grid{grid-template-columns:1fr}}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px}
+    .card-title{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+    .card-title h3{font-size:1.1rem}
+    .layer-tag{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;letter-spacing:.06em}
+    .jd-textarea{width:100%;min-height:300px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-bright);font-family:var(--font-mono);font-size:13px;line-height:1.7;padding:16px;resize:vertical;outline:none;transition:border-color var(--tr)}
+    .jd-textarea:focus{border-color:var(--cyan-dim)}
+    .jd-textarea::placeholder{color:var(--text-dim)}
+    .separator{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--text-dim);font-size:13px}
+    .separator::before,.separator::after{content:"";flex:1;height:1px;background:var(--border)}
+    .dropzone{border:1px dashed var(--border2);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:border-color var(--tr),background var(--tr);position:relative}
+    .dropzone:hover,.dropzone.drag-over{border-color:var(--cyan-dim);background:var(--cyan-glow)}
+    .dropzone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .dropzone-icon{font-size:28px;margin-bottom:8px}
+    .dropzone-text{font-size:13px;color:var(--text-dim)}
+    .dropzone-text strong{color:var(--cyan)}
+    .file-selected{display:none;align-items:center;gap:10px;padding:10px 14px;background:var(--green-glow);border:1px solid var(--green-dim);border-radius:var(--radius);margin-top:10px;font-family:var(--font-mono);font-size:12px;color:var(--green)}
+    .file-selected.visible{display:flex}
+    .file-remove{margin-left:auto;cursor:pointer;color:var(--text-dim);background:none;border:none;font-size:16px;line-height:1;padding:0 4px}
+    .file-remove:hover{color:var(--red)}
+    .weight-row{margin-bottom:18px}
+    .weight-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px}
+    .weight-name{color:var(--text-bright);font-weight:500}
+    .weight-pct{font-family:var(--font-mono);font-size:13px;font-weight:500;min-width:40px;text-align:right}
+    input[type="range"]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;outline:none;cursor:pointer}
+    input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid var(--bg);transition:transform var(--tr)}
+    input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+    .slider-must{background:linear-gradient(to right,var(--cyan) var(--val),var(--border2) var(--val))}
+    .slider-must::-webkit-slider-thumb{background:var(--cyan)}
+    .slider-nice{background:linear-gradient(to right,var(--teal) var(--val),var(--border2) var(--val))}
+    .slider-nice::-webkit-slider-thumb{background:var(--teal)}
+    .slider-sen{background:linear-gradient(to right,var(--orange) var(--val),var(--border2) var(--val))}
+    .slider-sen::-webkit-slider-thumb{background:var(--orange)}
+    .slider-loc{background:linear-gradient(to right,var(--purple) var(--val),var(--border2) var(--val))}
+    .slider-loc::-webkit-slider-thumb{background:var(--purple)}
+    .weight-sum-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);margin-bottom:18px;font-size:13px}
+    .weight-sum-row.warn{border-color:var(--gold-dim);background:var(--gold-glow)}
+    .weight-sum-row.ok{border-color:var(--green-dim);background:var(--green-glow)}
+    .sum-label{color:var(--text-dim);font-family:var(--font-mono);font-size:12px}
+    .sum-val{font-family:var(--font-mono);font-weight:600}
+    .threshold-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+    .threshold-field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px;font-family:var(--font-mono)}
+    .threshold-field input[type="number"]{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-bright);font-family:var(--font-mono);font-size:14px;padding:8px 10px;outline:none;transition:border-color var(--tr)}
+    .threshold-field input[type="number"]:focus{border-color:var(--cyan-dim)}
+    .btn-run{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px 32px;background:linear-gradient(135deg,var(--cyan) 0%,var(--teal) 100%);color:#000;border:none;border-radius:var(--radius-lg);font-family:var(--font-body);font-size:16px;font-weight:600;cursor:pointer;transition:opacity var(--tr),transform var(--tr);letter-spacing:.03em;margin-bottom:48px}
+    .btn-run:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
+    .btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .spinner{width:18px;height:18px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;display:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading .spinner{display:block}
+    .loading .btn-text{display:none}
+    .error-banner{display:none;background:var(--red-glow);border:1px solid var(--red-dim);border-radius:var(--radius);padding:14px 18px;color:var(--red);font-size:14px;margin-bottom:28px}
+    .error-banner.visible{display:block}
+    #results{display:none}
+    #results.visible{display:block}
+    .stats-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:28px;padding:18px 22px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg)}
+    .stat-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+    .stat-val{font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--text-bright)}
+    .stat-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em}
+    .stat-divider{width:1px;height:36px;background:var(--border)}
+    .source-badges{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+    .source-badge{font-family:var(--font-mono);font-size:11px;padding:3px 10px;border-radius:12px;letter-spacing:.04em}
+    .source-badge.ok{background:var(--green-glow);border:1px solid var(--green-dim);color:var(--green)}
+    .source-badge.fail{background:var(--red-glow);border:1px solid var(--red-dim);color:var(--red)}
+    .results-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px}
+    @media(max-width:900px){.results-grid{grid-template-columns:1fr}}
+    .section-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid}
+    .section-header h2{font-size:1.4rem}
+    .section-header .count-badge{font-family:var(--font-mono);font-size:12px;padding:2px 10px;border-radius:12px;font-weight:600}
+    .section-accepted .section-header{border-color:var(--green)}
+    .section-accepted .section-header h2{color:var(--green)}
+    .section-accepted .count-badge{background:var(--green-glow);color:var(--green);border:1px solid var(--green-dim)}
+    .section-close .section-header{border-color:var(--gold)}
+    .section-close .section-header h2{color:var(--gold)}
+    .section-close .count-badge{background:var(--gold-glow);color:var(--gold);border:1px solid var(--gold-dim)}
+    .section-rejected{padding:20px 24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);display:flex;align-items:center;gap:20px;margin-bottom:24px}
+    .rejected-count-badge{font-family:var(--font-mono);font-size:36px;font-weight:600;color:var(--red)}
+    .rejected-label{color:var(--text-dim);font-size:14px}
+    .rejected-label strong{color:var(--text-bright);display:block;font-size:16px}
+    .profile-cards{display:flex;flex-direction:column;gap:16px}
+    .profile-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;opacity:0;transform:translateY(16px);transition:opacity .35s ease,transform .35s ease,border-color var(--tr)}
+    .profile-card.animated{opacity:1;transform:translateY(0)}
+    .profile-card:hover{border-color:var(--border2)}
+    .profile-card.accepted{border-left:3px solid var(--green)}
+    .profile-card.close{border-left:3px solid var(--gold)}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .profile-name{font-family:var(--font-head);font-size:1.15rem;color:var(--text-bright);font-weight:700}
+    .profile-meta{font-size:12px;color:var(--text-dim);margin-top:2px}
+    .profile-meta strong{color:var(--text)}
+    .profile-url{font-family:var(--font-mono);font-size:11px;color:var(--cyan-dim);text-decoration:none;display:block;margin-top:4px}
+    .profile-url:hover{color:var(--cyan)}
+    .score-bar-wrap{margin-bottom:12px}
+    .score-bar-label{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-bottom:5px}
+    .score-bar-label .score-num{font-weight:600}
+    .score-bar-bg{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
+    .score-bar-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.25,.46,.45,.94)}
+    .accepted .score-bar-fill{background:linear-gradient(90deg,var(--green),var(--teal))}
+    .close .score-bar-fill{background:linear-gradient(90deg,var(--gold),var(--orange))}
+    .skills-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+    .pill{font-family:var(--font-mono);font-size:11px;padding:2px 9px;border-radius:12px;letter-spacing:.03em}
+    .pill-match{background:var(--green-glow);color:var(--green);border:1px solid var(--green-dim)}
+    .pill-gap{background:var(--red-glow);color:var(--red);border:1px solid var(--red-dim)}
+    .reasoning{font-size:13px;color:var(--text);line-height:1.6;padding-top:10px;border-top:1px solid var(--border);font-style:italic}
+    .spec-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:28px}
+    .spec-panel h3{font-size:1rem;margin-bottom:14px;color:var(--cyan)}
+    .spec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+    .spec-item{font-size:13px}
+    .spec-key{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+    .spec-val{color:var(--text-bright);font-weight:500}
+    .gap-flag{font-family:var(--font-mono);font-size:11px;color:var(--gold);background:var(--gold-glow);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:4px 10px;margin-top:4px;display:inline-block}
+    .empty-state{color:var(--text-dim);font-size:14px;padding:20px;text-align:center}
+
+    /* ── JD Analysis Panel ─────────────────────────────────── */
+    .jda-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;margin-bottom:24px}
+    .jda-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+    .jda-header h3{font-size:1.1rem;color:var(--text-bright);margin:0}
+    .jda-header .layer-tag{margin-left:auto}
+    .jda-grid{display:grid;grid-template-columns:140px 1fr 1fr;gap:20px;margin-bottom:20px}
+    @media(max-width:820px){.jda-grid{grid-template-columns:1fr 1fr}}
+    .jda-section-label{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+
+    /* Quality score gauge */
+    .quality-gauge{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+    .quality-score-num{font-family:var(--font-head);font-size:3rem;font-weight:700;line-height:1}
+    .quality-score-denom{font-family:var(--font-mono);font-size:12px;color:var(--text-dim)}
+    .quality-bar-bg{width:100%;height:5px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-top:4px}
+    .quality-bar-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.25,.46,.45,.94)}
+    .quality-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+    .quality-good .quality-score-num{color:var(--green)}
+    .quality-good .quality-bar-fill{background:linear-gradient(90deg,var(--green),var(--teal))}
+    .quality-good .quality-label{color:var(--green)}
+    .quality-ok .quality-score-num{color:var(--gold)}
+    .quality-ok .quality-bar-fill{background:linear-gradient(90deg,var(--gold),var(--orange))}
+    .quality-ok .quality-label{color:var(--gold)}
+    .quality-poor .quality-score-num{color:var(--red)}
+    .quality-poor .quality-bar-fill{background:linear-gradient(90deg,var(--red),var(--orange))}
+    .quality-poor .quality-label{color:var(--red)}
+
+    /* Issues */
+    .issue-list{display:flex;flex-direction:column;gap:6px}
+    .issue-item{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--text);line-height:1.5}
+    .issue-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);margin-top:5px;flex-shrink:0}
+    .no-issues{font-size:12px;color:var(--green);font-family:var(--font-mono)}
+
+    /* Core requirements */
+    .core-req-text{font-size:13px;color:var(--text);line-height:1.65;font-style:italic;border-left:2px solid var(--cyan-dim);padding-left:12px}
+
+    /* Skills rows in analysis panel */
+    .jda-skills-block{margin-bottom:16px}
+    .pill-inferred{background:rgba(167,139,250,.08);color:var(--purple);border:1px solid rgba(167,139,250,.25)}
+
+    /* Cleaned JD collapsible */
+    .cleaned-jd-toggle{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--cyan);font-family:var(--font-mono);font-size:11px;cursor:pointer;padding:0;letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
+    .cleaned-jd-toggle:hover{color:var(--cyan-dim)}
+    .toggle-arrow{transition:transform .2s ease;display:inline-block}
+    .toggle-arrow.open{transform:rotate(90deg)}
+    .cleaned-jd-body{display:none;margin-top:12px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text);line-height:1.75;white-space:pre-wrap;max-height:300px;overflow-y:auto}
+    .cleaned-jd-body.open{display:block}
+
+    /* ── Activity Feed ──────────────────────────────────────── */
+    .activity-feed{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:28px}
+    .activity-feed.visible{display:block}
+    .activity-feed-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em}
+    .activity-feed-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse 1s infinite}
+    .activity-log{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+    .activity-entry{display:flex;align-items:flex-start;gap:10px;font-family:var(--font-mono);font-size:12px;line-height:1.5;padding:4px 0;border-bottom:1px solid rgba(26,45,69,.5)}
+    .activity-entry:last-child{border-bottom:none}
+    .activity-time{color:var(--text-dim);min-width:60px;flex-shrink:0}
+    .activity-icon{min-width:18px;text-align:center;flex-shrink:0}
+    .activity-msg{color:var(--text)}
+    .activity-msg .hl{color:var(--cyan)}
+    .activity-msg .hl-green{color:var(--green)}
+    .activity-msg .hl-gold{color:var(--gold)}
+    .activity-msg .hl-orange{color:var(--orange)}
+    .activity-msg .hl-purple{color:var(--purple)}
+
+    /* ── HITL-2 Banner (thin pool) ──────────────────────────── */
+    .hitl-banner{display:none;background:var(--gold-glow);border:1px solid var(--gold-dim);border-radius:var(--radius-lg);padding:18px 22px;margin-bottom:20px}
+    .hitl-banner.visible{display:block}
+    .hitl-banner-title{font-family:var(--font-mono);font-size:12px;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+    .hitl-banner-msg{font-size:14px;color:var(--text-bright);margin-bottom:14px}
+    .hitl-banner-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .hitl-btn{padding:9px 18px;border-radius:var(--radius);border:1px solid;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:opacity var(--tr);letter-spacing:.04em}
+    .hitl-btn:hover{opacity:.8}
+    .hitl-btn-broaden{background:var(--cyan-glow);border-color:var(--cyan-dim);color:var(--cyan)}
+    .hitl-btn-relax{background:var(--purple-dim);border-color:var(--purple);color:var(--purple)}
+    .hitl-btn-proceed{background:var(--surface2);border-color:var(--border2);color:var(--text-dim)}
+
+    /* ── HITL-1 Modal (JD review) ───────────────────────────── */
+    .hitl-modal-overlay{display:none;position:fixed;inset:0;background:rgba(3,7,15,.85);z-index:1000;align-items:center;justify-content:center;padding:24px}
+    .hitl-modal-overlay.visible{display:flex}
+    .hitl-modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);width:100%;max-width:720px;max-height:90vh;overflow-y:auto;padding:32px}
+    .hitl-modal-title{font-family:var(--font-head);font-size:1.6rem;color:var(--text-bright);margin-bottom:6px}
+    .hitl-modal-subtitle{font-family:var(--font-mono);font-size:11px;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em;margin-bottom:24px}
+    .hitl-field{margin-bottom:18px}
+    .hitl-field label{display:block;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+    .hitl-field input,.hitl-field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-bright);font-family:var(--font-mono);font-size:12px;padding:8px 12px;outline:none;transition:border-color var(--tr)}
+    .hitl-field input:focus,.hitl-field textarea:focus{border-color:var(--cyan-dim)}
+    .hitl-field textarea{min-height:80px;resize:vertical}
+    .hitl-modal-note{font-size:12px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:20px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius);border-left:2px solid var(--cyan-dim)}
+    .hitl-modal-actions{display:flex;gap:12px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border)}
+    .btn-hitl-approve{padding:12px 28px;background:linear-gradient(135deg,var(--cyan),var(--teal));color:#000;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;transition:opacity var(--tr)}
+    .btn-hitl-approve:hover{opacity:.9}
+
+    /* ── Mode Toggle ─────────────────────────────────────────────────────── */
+    .mode-toggle-wrap{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+    .mode-toggle{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+    .mode-btn{padding:10px 24px;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);background:transparent;border:none;cursor:pointer;transition:all var(--tr);letter-spacing:.04em;position:relative}
+    .mode-btn.active{color:var(--text-bright);background:var(--surface3)}
+    .mode-btn.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--cyan)}
+    .mode-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,.03)}
+    .mode-hint{font-size:12px;color:var(--text-dim);font-family:var(--font-mono)}
+
+    /* ── Resume Upload Zone ──────────────────────────────────────────────── */
+    .resume-upload-panel{display:none}
+    .resume-upload-panel.visible{display:block}
+    .resume-dropzone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:32px;text-align:center;cursor:pointer;transition:border-color var(--tr),background var(--tr);position:relative;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+    .resume-dropzone:hover,.resume-dropzone.drag-over{border-color:var(--orange-dim);background:rgba(251,146,60,.06)}
+    .resume-dropzone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .resume-dropzone-icon{font-size:36px}
+    .resume-dropzone-text{font-size:14px;color:var(--text-dim)}
+    .resume-dropzone-text strong{color:var(--orange)}
+    .resume-file-list{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+    .resume-file-item{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text)}
+    .resume-file-item .file-icon{color:var(--orange);font-size:14px}
+    .resume-file-item .file-remove-btn{margin-left:auto;cursor:pointer;color:var(--text-dim);background:none;border:none;font-size:14px;line-height:1;padding:0 4px}
+    .resume-file-item .file-remove-btn:hover{color:var(--red)}
+    .resume-count-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:rgba(251,146,60,.1);border:1px solid var(--orange-dim);border-radius:20px;font-family:var(--font-mono);font-size:11px;color:var(--orange);margin-top:8px}
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+  <header>
+    <div class="header-inner">
+      <div>
+        <h1>Candidate Sourcing Pipeline</h1>
+        <p class="header-subtitle">multi-agent &middot; 7 layers &middot; 3 live sources &middot; real-time deduplication</p>
+      </div>
+      <div class="badge"><span class="badge-dot"></span>POC &middot; Phase 1</div>
+    </div>
+  </header>
+
+  <!-- Mode Toggle -->
+  <div class="mode-toggle-wrap">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="mode-api" onclick="setMode('api')">Source from APIs</button>
+      <button class="mode-btn" id="mode-resume" onclick="setMode('resume')">Upload Resumes</button>
+    </div>
+    <span class="mode-hint" id="mode-hint">Fetch candidate profiles from Google, Naukri, PDL</span>
+  </div>
+
+  <div class="input-grid">
+    <div class="card">
+      <div class="card-title">
+        <h3>Job Description</h3>
+        <span class="layer-tag">LAYER 01</span>
+      </div>
+      <textarea id="jd-text" class="jd-textarea" placeholder="Paste your job description here...&#10;&#10;e.g. We are looking for a Senior Python Engineer with experience in&#10;FastAPI, PostgreSQL, Docker and Kubernetes. The ideal candidate&#10;has 5+ years of backend experience and will be based in Bangalore."></textarea>
+      <div class="separator">or upload a file</div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="jd-file" accept=".txt,.pdf" />
+        <div class="dropzone-icon">&#128196;</div>
+        <div class="dropzone-text"><strong>Click to upload</strong> or drag and drop</div>
+        <div class="dropzone-text">.txt or .pdf &mdash; max 5 MB</div>
+      </div>
+      <div class="file-selected" id="file-selected">
+        <span>&#128206;</span>
+        <span id="file-name">&mdash;</span>
+        <button class="file-remove" id="file-remove" title="Remove file">&#x2715;</button>
+      </div>
+
+      <!-- Resume upload panel (hidden by default) -->
+      <div class="resume-upload-panel" id="resume-upload-panel">
+        <div class="separator" style="margin-top:20px">candidate resumes</div>
+        <div class="resume-dropzone" id="resume-dropzone">
+          <input type="file" id="resume-files" accept=".txt,.pdf,.doc,.docx" multiple />
+          <div class="resume-dropzone-icon">&#128195;</div>
+          <div class="resume-dropzone-text"><strong>Upload resumes</strong> &mdash; drop multiple files here</div>
+          <div class="resume-dropzone-text">.txt, .pdf &mdash; up to 50 files</div>
+        </div>
+        <div class="resume-file-list" id="resume-file-list"></div>
+        <div class="resume-count-badge" id="resume-count-badge" style="display:none">
+          <span id="resume-count">0</span> resume(s) ready
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <h3>Scoring Weights</h3>
+        <span class="layer-tag">LAYER 06</span>
+      </div>
+      <div class="weight-row">
+        <div class="weight-label">
+          <span class="weight-name">Must-Have Skills</span>
+          <span class="weight-pct" id="pct-must" style="color:var(--cyan)">50%</span>
+        </div>
+        <input type="range" id="slider-must" class="slider-must" min="0" max="100" value="50" style="--val:50%" oninput="onSliderChange()" />
+      </div>
+      <div class="weight-row">
+        <div class="weight-label">
+          <span class="weight-name">Nice-to-Have Skills</span>
+          <span class="weight-pct" id="pct-nice" style="color:var(--teal)">25%</span>
+        </div>
+        <input type="range" id="slider-nice" class="slider-nice" min="0" max="100" value="25" style="--val:25%" oninput="onSliderChange()" />
+      </div>
+      <div class="weight-row">
+        <div class="weight-label">
+          <span class="weight-name">Seniority Level</span>
+          <span class="weight-pct" id="pct-sen" style="color:var(--orange)">15%</span>
+        </div>
+        <input type="range" id="slider-sen" class="slider-sen" min="0" max="100" value="15" style="--val:15%" oninput="onSliderChange()" />
+      </div>
+      <div class="weight-row">
+        <div class="weight-label">
+          <span class="weight-name">Location Match</span>
+          <span class="weight-pct" id="pct-loc" style="color:var(--purple)">10%</span>
+        </div>
+        <input type="range" id="slider-loc" class="slider-loc" min="0" max="100" value="10" style="--val:10%" oninput="onSliderChange()" />
+      </div>
+      <div class="weight-sum-row ok" id="weight-sum-row">
+        <span class="sum-label">TOTAL WEIGHT</span>
+        <span class="sum-val" id="weight-sum" style="color:var(--green)">100%</span>
+      </div>
+      <div id="weight-warn" style="display:none;font-size:12px;color:var(--gold);margin-bottom:14px;font-family:var(--font-mono)">
+        &#9888; Weights will be auto-normalized before scoring.
+      </div>
+      <div style="font-size:12px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Score Thresholds</div>
+      <div class="threshold-row">
+        <div class="threshold-field">
+          <label>Accepted &ge;</label>
+          <input type="number" id="threshold-accepted" min="0" max="100" value="70" />
+        </div>
+        <div class="threshold-field">
+          <label>Close &ge;</label>
+          <input type="number" id="threshold-close" min="0" max="100" value="50" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-banner" id="error-banner"></div>
+
+  <button class="btn-run" id="btn-run" onclick="runPipeline()">
+    <div class="spinner" id="spinner"></div>
+    <span class="btn-text" id="btn-run-text">Run Pipeline</span>
+  </button>
+
+  <!-- Activity Feed -->
+  <div class="activity-feed" id="activity-feed">
+    <div class="activity-feed-header">
+      <span class="activity-feed-dot" id="feed-dot"></span>
+      <span>Pipeline Activity</span>
+      <span id="feed-status" style="margin-left:auto;color:var(--text-dim)">running…</span>
+    </div>
+    <div class="activity-log" id="activity-log"></div>
+  </div>
+
+  <!-- HITL-2: Thin pool banner (shown inline) -->
+  <div class="hitl-banner" id="hitl-banner">
+    <div class="hitl-banner-title">&#9888; Human Review Required</div>
+    <div class="hitl-banner-msg" id="hitl-banner-msg">Only N profiles found. How should we proceed?</div>
+    <div class="hitl-banner-actions">
+      <button class="hitl-btn hitl-btn-broaden" onclick="submitHITL2('broaden')">&#128269; Broaden Search</button>
+      <button class="hitl-btn hitl-btn-relax" onclick="submitHITL2('relax_location')">&#127758; Relax Location</button>
+      <button class="hitl-btn hitl-btn-proceed" onclick="submitHITL2('proceed')">&#9654; Proceed Anyway</button>
+    </div>
+  </div>
+
+  <!-- HITL-1: JD Review Modal -->
+  <div class="hitl-modal-overlay" id="hitl-modal-overlay">
+    <div class="hitl-modal">
+      <div class="hitl-modal-title">Review Extracted Job Spec</div>
+      <div class="hitl-modal-subtitle">HITL Checkpoint &middot; Layer 02 &rarr; Layer 03</div>
+      <div class="hitl-modal-note">The AI extracted the following specification from your JD. Review and edit before search begins. Changes will be applied to all subsequent pipeline stages.</div>
+      <div class="hitl-field">
+        <label>Role Title</label>
+        <input type="text" id="hitl-role-title" />
+      </div>
+      <div class="hitl-field">
+        <label>Location</label>
+        <input type="text" id="hitl-location" />
+      </div>
+      <div class="hitl-field">
+        <label>Must-Have Skills (comma-separated)</label>
+        <input type="text" id="hitl-must-haves" />
+      </div>
+      <div class="hitl-field">
+        <label>Nice-to-Have Skills (comma-separated)</label>
+        <input type="text" id="hitl-nice-haves" />
+      </div>
+      <div class="hitl-modal-actions">
+        <button class="btn-hitl-approve" onclick="submitHITL1()">Approve &amp; Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="stats-bar" id="stats-bar"></div>
+    <div class="jda-panel" id="jda-panel" style="display:none"></div>
+    <div class="spec-panel" id="spec-panel"></div>
+    <div class="section-rejected" id="rejected-row"></div>
+    <div class="results-grid">
+      <div class="section-accepted">
+        <div class="section-header">
+          <h2>Shortlist</h2>
+          <span class="count-badge" id="accepted-count">0</span>
+        </div>
+        <div class="profile-cards" id="accepted-cards"></div>
+      </div>
+      <div class="section-close">
+        <div class="section-header">
+          <h2>Rejected-but-Close</h2>
+          <span class="count-badge" id="close-count">0</span>
+        </div>
+        <div class="profile-cards" id="close-cards"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function escHtml(s){
+  if(!s)return'';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function onSliderChange(){
+  var ids=['must','nice','sen','loc'];
+  var vals=ids.map(function(id){return parseInt(document.getElementById('slider-'+id).value)});
+  var sum=vals.reduce(function(a,b){return a+b},0);
+  ids.forEach(function(id,i){
+    document.getElementById('pct-'+id).textContent=vals[i]+'%';
+    var sl=document.getElementById('slider-'+id);
+    sl.style.setProperty('--val',vals[i]+'%');
+  });
+  var sumEl=document.getElementById('weight-sum');
+  var rowEl=document.getElementById('weight-sum-row');
+  var warnEl=document.getElementById('weight-warn');
+  sumEl.textContent=sum+'%';
+  if(sum===100){
+    sumEl.style.color='var(--green)';rowEl.className='weight-sum-row ok';warnEl.style.display='none';
+  } else {
+    sumEl.style.color='var(--gold)';rowEl.className='weight-sum-row warn';warnEl.style.display='block';
+  }
+}
+
+var dropzone=document.getElementById('dropzone');
+var fileInput=document.getElementById('jd-file');
+var fileSelected=document.getElementById('file-selected');
+var fileNameEl=document.getElementById('file-name');
+var fileRemove=document.getElementById('file-remove');
+
+fileInput.addEventListener('change',function(){
+  if(fileInput.files.length>0)showFile(fileInput.files[0]);
+});
+dropzone.addEventListener('dragover',function(e){e.preventDefault();dropzone.classList.add('drag-over')});
+dropzone.addEventListener('dragleave',function(){dropzone.classList.remove('drag-over')});
+dropzone.addEventListener('drop',function(e){
+  e.preventDefault();dropzone.classList.remove('drag-over');
+  var file=e.dataTransfer.files[0];
+  if(file){var dt=new DataTransfer();dt.items.add(file);fileInput.files=dt.files;showFile(file);}
+});
+function showFile(file){fileNameEl.textContent=file.name;fileSelected.classList.add('visible')}
+fileRemove.addEventListener('click',function(){fileInput.value='';fileSelected.classList.remove('visible');fileNameEl.textContent='--'});
+
+// ── Mode toggle ──────────────────────────────────────────────────────────
+var _currentMode='api'; // 'api' | 'resume'
+var _resumeFiles=[]; // File[]
+
+function setMode(mode){
+  _currentMode=mode;
+  document.getElementById('mode-api').classList.toggle('active',mode==='api');
+  document.getElementById('mode-resume').classList.toggle('active',mode==='resume');
+  document.getElementById('resume-upload-panel').classList.toggle('visible',mode==='resume');
+  document.getElementById('btn-run-text').textContent=mode==='api'?'Run Pipeline':'Match Resumes';
+  document.getElementById('mode-hint').textContent=mode==='api'
+    ?'Fetch candidate profiles from Google, Naukri, PDL'
+    :'Upload candidate resumes to match against the JD';
+}
+
+// ── Resume file management ──────────────────────────────────────────────
+var resumeDropzone=document.getElementById('resume-dropzone');
+var resumeFileInput=document.getElementById('resume-files');
+
+resumeFileInput.addEventListener('change',function(){
+  addResumeFiles(Array.from(resumeFileInput.files));
+  resumeFileInput.value='';
+});
+resumeDropzone.addEventListener('dragover',function(e){e.preventDefault();resumeDropzone.classList.add('drag-over')});
+resumeDropzone.addEventListener('dragleave',function(){resumeDropzone.classList.remove('drag-over')});
+resumeDropzone.addEventListener('drop',function(e){
+  e.preventDefault();resumeDropzone.classList.remove('drag-over');
+  addResumeFiles(Array.from(e.dataTransfer.files));
+});
+
+function addResumeFiles(files){
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    if(!_resumeFiles.some(function(existing){return existing.name===f.name&&existing.size===f.size})){
+      _resumeFiles.push(f);
+    }
+  }
+  renderResumeFileList();
+}
+
+function removeResumeFile(idx){
+  _resumeFiles.splice(idx,1);
+  renderResumeFileList();
+}
+
+function renderResumeFileList(){
+  var list=document.getElementById('resume-file-list');
+  // Clear existing children safely
+  while(list.firstChild)list.removeChild(list.firstChild);
+  for(var i=0;i<_resumeFiles.length;i++){
+    var f=_resumeFiles[i];
+    var sizeKB=Math.round(f.size/1024);
+    var el=document.createElement('div');el.className='resume-file-item';
+    // Build DOM elements safely instead of innerHTML
+    var iconSpan=document.createElement('span');iconSpan.className='file-icon';iconSpan.textContent='\u{1F4C4}';
+    var nameSpan=document.createElement('span');
+    nameSpan.textContent=f.name+' ('+sizeKB+' KB)';
+    var removeBtn=document.createElement('button');
+    removeBtn.className='file-remove-btn';removeBtn.title='Remove';removeBtn.textContent='\u2715';
+    removeBtn.setAttribute('data-idx',String(i));
+    removeBtn.addEventListener('click',function(){removeResumeFile(parseInt(this.getAttribute('data-idx')))});
+    el.appendChild(iconSpan);el.appendChild(nameSpan);el.appendChild(removeBtn);
+    list.appendChild(el);
+  }
+  var badge=document.getElementById('resume-count-badge');
+  if(_resumeFiles.length>0){
+    badge.style.display='inline-flex';
+    document.getElementById('resume-count').textContent=_resumeFiles.length;
+  }else{
+    badge.style.display='none';
+  }
+}
+
+// ── SSE state ──────────────────────────────────────────────────────────────
+var _currentRunId=null;
+
+async function runPipeline(){
+  var jdText=document.getElementById('jd-text').value.trim();
+  var hasFile=fileInput.files.length>0;
+  if(!jdText&&!hasFile){showError('Please paste a job description or upload a file.');return}
+
+  if(_currentMode==='resume'&&_resumeFiles.length===0){
+    showError('Please upload at least one resume file.');return;
+  }
+
+  setLoading(true);hideError();
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('hitl-banner').classList.remove('visible');
+  clearActivityFeed();
+
+  var fd=new FormData();
+  if(hasFile){fd.append('jd_file',fileInput.files[0])}else{fd.append('jd_text',jdText)}
+  fd.append('w_must_have',(parseInt(document.getElementById('slider-must').value)/100).toFixed(2));
+  fd.append('w_nice_to_have',(parseInt(document.getElementById('slider-nice').value)/100).toFixed(2));
+  fd.append('w_seniority',(parseInt(document.getElementById('slider-sen').value)/100).toFixed(2));
+  fd.append('w_location',(parseInt(document.getElementById('slider-loc').value)/100).toFixed(2));
+  fd.append('threshold_accepted',document.getElementById('threshold-accepted').value);
+  fd.append('threshold_close',document.getElementById('threshold-close').value);
+
+  // Determine endpoint based on mode
+  var endpoint='/api/run/stream';
+  if(_currentMode==='resume'){
+    endpoint='/api/resume/match/stream';
+    for(var ri=0;ri<_resumeFiles.length;ri++){
+      fd.append('resumes',_resumeFiles[ri]);
+    }
+  }
+
+  try{
+    var resp=await fetch(endpoint,{method:'POST',body:fd});
+    if(!resp.ok){
+      var errBody=await resp.json().catch(function(){return{detail:resp.statusText}});
+      throw new Error(errBody.detail||resp.statusText);
+    }
+    // Extract run_id from response header (set by server)
+    _currentRunId=resp.headers.get('X-Run-Id');
+
+    var reader=resp.body.getReader();
+    var decoder=new TextDecoder();
+    var buf='';
+
+    while(true){
+      var chunk=await reader.read();
+      if(chunk.done)break;
+      buf+=decoder.decode(chunk.value,{stream:true});
+      var lines=buf.split('\n');
+      buf=lines.pop(); // keep partial line
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i].trim();
+        if(!line.startsWith('data:'))continue;
+        var json_str=line.slice(5).trim();
+        try{
+          var evt=JSON.parse(json_str);
+          if(evt.event_type==='stream_end')break;
+          handlePipelineEvent(evt);
+        }catch(ex){/* ignore parse errors */}
+      }
+    }
+  }catch(e){
+    showError('Pipeline error: '+e.message);
+    setLoading(false);
+    hideFeed();
+  }
+}
+
+function handlePipelineEvent(evt){
+  var t=evt.event_type;var d=evt.data||{};
+  if(t==='pipeline_start'){
+    showFeed();
+    addFeedEntry('&#9654;','Pipeline started','hl');
+  } else if(t==='agent_start'){
+    var stageNames={'jd_extraction':'JD Extraction','query_generation':'Query Generation','profile_fetching':'Profile Fetching','scoring':'Scoring','resume_parser':'Resume Parsing','deduplication':'Deduplication','ranking':'Ranking'};
+    var agentKey=d.stage||d.agent||'';
+    var label=stageNames[agentKey]||agentKey;
+    var iterStr=d.iteration>1?' (iteration '+d.iteration+')':'';
+    addFeedEntry('&#9654;','Running <span class="hl">'+escHtml(label)+'</span>'+escHtml(iterStr),'');
+  } else if(t==='agent_complete'){
+    var stageNames={'jd_extraction':'JD Extraction','query_generation':'Query Generation','profile_fetching':'Profile Fetching','scoring':'Scoring','resume_parser':'Resume Parsing','deduplication':'Deduplication','ranking':'Ranking'};
+    var agentKey=d.stage||d.agent||'';
+    var label=stageNames[agentKey]||agentKey;
+    var summary='';
+    var ak=d.stage||d.agent||'';
+    if(ak==='jd_extraction'&&(d.result||d.role_title)){
+      var rt=d.role_title||(d.result&&d.result.role_title)||'';
+      var qs=d.must_haves||(d.result&&d.result.jd_quality_score)||'?';
+      summary=' &mdash; role: <span class="hl">'+escHtml(rt)+'</span>, must-haves: <span class="hl-green">'+escHtml(String(qs))+'</span>';
+    }
+    else if(ak==='profile_fetching'&&d.result){summary=' &mdash; <span class="hl">'+escHtml(String(d.result.raw_count||0))+'</span> profiles fetched'}
+    else if(ak==='resume_parser'){summary=' &mdash; <span class="hl">'+escHtml(String(d.parsed_count||0))+'</span>/'+escHtml(String(d.total_uploaded||0))+' resumes parsed'}
+    else if(ak==='deduplication'){summary=' &mdash; <span class="hl">'+escHtml(String(d.deduped_count||0))+'</span> unique profiles'}
+    else if((ak==='scoring'||ak==='ranking')&&d.result){summary=' &mdash; <span class="hl-green">'+escHtml(String(d.result.accepted||0))+'</span> accepted, <span class="hl-gold">'+escHtml(String(d.result.close||0))+'</span> close'}
+    addFeedEntry('&#10003;','<span class="hl-green">'+escHtml(label)+' complete</span>'+summary,'');
+  } else if(t==='tool_call'){
+    addFeedEntry('&#9881;','Tool call: <span class="hl">'+escHtml(d.tool||'')+'</span>','');
+  } else if(t==='refinement'){
+    addFeedEntry('&#8635;','Refining search — strategy: <span class="hl-orange">'+escHtml(d.strategy||'')+'</span>','');
+  } else if(t==='quality_assessed'){
+    var actionColor={'accept':'hl-green','force_accept':'hl-green','refine_broader':'hl-orange','refine_location_relaxed':'hl-purple'};
+    var cls=actionColor[d.action]||'hl';
+    addFeedEntry('&#9654;','Quality check: <span class="'+escHtml(cls)+'">'+escHtml(d.action||'')+'</span>','');
+  } else if(t==='hitl_jd_review'){
+    addFeedEntry('&#9995;','<span class="hl-gold">Waiting for your review of the extracted spec&hellip;</span>','');
+    showHITL1Modal(d.search_spec||{});
+  } else if(t==='hitl_profile_count'){
+    addFeedEntry('&#9888;','<span class="hl-gold">Thin pool detected &mdash; '+escHtml(String(d.raw_count||0))+' profiles. Waiting for your decision&hellip;</span>','');
+    showHITL2Banner(d.raw_count||0,d.threshold||15);
+  } else if(t==='hitl_resumed'){
+    hideHITL1Modal();
+    document.getElementById('hitl-banner').classList.remove('visible');
+    addFeedEntry('&#10004;','<span class="hl-green">Human review done — resuming pipeline</span>','');
+  } else if(t==='pipeline_complete'){
+    setFeedStatus('complete');
+    document.getElementById('feed-dot').style.animation='none';
+    document.getElementById('feed-dot').style.background='var(--green)';
+    setLoading(false);
+    if(d&&d.accepted!==undefined){renderResults(d)}
+  } else if(t==='pipeline_error'){
+    setFeedStatus('error');
+    showError('Pipeline error: '+(d.error||'unknown error'));
+    setLoading(false);
+  }
+}
+
+// ── Activity Feed helpers ──────────────────────────────────────────────────
+function showFeed(){document.getElementById('activity-feed').classList.add('visible')}
+function hideFeed(){document.getElementById('activity-feed').classList.remove('visible')}
+function clearActivityFeed(){document.getElementById('activity-log').innerHTML='';setFeedStatus('running\u2026');document.getElementById('feed-dot').style.animation='';document.getElementById('feed-dot').style.background='var(--cyan)'}
+function setFeedStatus(s){document.getElementById('feed-status').textContent=s}
+function addFeedEntry(icon,msgHtml,cls){
+  var log=document.getElementById('activity-log');
+  var now=new Date();
+  var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+  var el=document.createElement('div');el.className='activity-entry';
+  el.innerHTML='<span class="activity-time">'+ts+'</span><span class="activity-icon">'+icon+'</span><span class="activity-msg">'+msgHtml+'</span>';
+  log.appendChild(el);
+  log.scrollTop=log.scrollHeight;
+}
+
+// ── HITL-1: JD Review Modal ────────────────────────────────────────────────
+function showHITL1Modal(spec){
+  document.getElementById('hitl-role-title').value=spec.role_title||'';
+  document.getElementById('hitl-location').value=spec.location||'';
+  document.getElementById('hitl-must-haves').value=(spec.must_have_skills||[]).join(', ');
+  document.getElementById('hitl-nice-haves').value=(spec.nice_to_have_skills||[]).join(', ');
+  document.getElementById('hitl-modal-overlay').classList.add('visible');
+}
+function hideHITL1Modal(){document.getElementById('hitl-modal-overlay').classList.remove('visible')}
+
+function submitHITL1(){
+  if(!_currentRunId){hideHITL1Modal();return}
+  var overrides={};
+  var roleTitle=document.getElementById('hitl-role-title').value.trim();
+  var location=document.getElementById('hitl-location').value.trim();
+  var mustHaves=document.getElementById('hitl-must-haves').value.trim();
+  var niceHaves=document.getElementById('hitl-nice-haves').value.trim();
+  if(roleTitle)overrides.role_title=roleTitle;
+  if(location)overrides.location=location;
+  if(mustHaves)overrides.must_have_skills=mustHaves.split(',').map(function(s){return s.trim()}).filter(Boolean);
+  if(niceHaves)overrides.nice_to_have_skills=niceHaves.split(',').map(function(s){return s.trim()}).filter(Boolean);
+  fetch('/api/run/'+encodeURIComponent(_currentRunId)+'/resume',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({checkpoint:'jd_review',spec_overrides:overrides,decision:'proceed'})
+  }).catch(function(e){console.error('HITL-1 resume failed:',e)});
+  hideHITL1Modal();
+}
+
+// ── HITL-2: Thin Pool Banner ───────────────────────────────────────────────
+function showHITL2Banner(rawCount,threshold){
+  document.getElementById('hitl-banner-msg').textContent='Only '+rawCount+' profiles found (threshold: '+threshold+'). How should we proceed?';
+  document.getElementById('hitl-banner').classList.add('visible');
+}
+
+function submitHITL2(decision){
+  if(!_currentRunId){document.getElementById('hitl-banner').classList.remove('visible');return}
+  fetch('/api/run/'+encodeURIComponent(_currentRunId)+'/resume',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({checkpoint:'profile_count',spec_overrides:{},decision:decision})
+  }).catch(function(e){console.error('HITL-2 resume failed:',e)});
+  document.getElementById('hitl-banner').classList.remove('visible');
+}
+
+function renderResults(data){
+  var statsBar=document.getElementById('stats-bar');
+  var sourceBadgesHtml='';
+  var srcKeys=Object.keys(data.source_availability);
+  for(var i=0;i<srcKeys.length;i++){
+    var src=srcKeys[i];var ok=data.source_availability[src];
+    sourceBadgesHtml+='<span class="source-badge '+(ok?'ok':'fail')+'">'+escHtml(src)+': '+(ok?'\u2713':'\u2717')+'</span>';
+  }
+  var statsHtml='<div class="stat-item"><span class="stat-val">'+data.total_raw+'</span><span class="stat-label">Raw Profiles</span></div>'
+    +'<div class="stat-divider"></div>'
+    +'<div class="stat-item"><span class="stat-val">'+data.total_deduped+'</span><span class="stat-label">After Dedup</span></div>'
+    +'<div class="stat-divider"></div>'
+    +'<div class="stat-item"><span class="stat-val">'+data.accepted.length+'</span><span class="stat-label" style="color:var(--green)">Accepted</span></div>'
+    +'<div class="stat-divider"></div>'
+    +'<div class="stat-item"><span class="stat-val">'+data.close.length+'</span><span class="stat-label" style="color:var(--gold)">Close</span></div>'
+    +'<div class="stat-divider"></div>'
+    +'<div class="stat-item"><span class="stat-val">'+data.rejected_count+'</span><span class="stat-label" style="color:var(--red)">Rejected</span></div>'
+    +'<div class="source-badges">'+sourceBadgesHtml+'</div>';
+  statsBar.innerHTML='';statsBar.insertAdjacentHTML('beforeend',statsHtml);
+
+  renderJDAnalysis(data.search_spec);
+
+  var spec=data.search_spec;
+  var gapFlagsHtml='';
+  if(spec.gap_flags&&spec.gap_flags.length>0){
+    for(var j=0;j<spec.gap_flags.length;j++){gapFlagsHtml+='<span class="gap-flag">&#9888; '+escHtml(spec.gap_flags[j])+'</span> '}
+  }else{gapFlagsHtml='<span style="color:var(--text-dim);font-size:12px">None</span>'}
+  var specHtml='<h3 style="color:var(--cyan);font-size:1rem;margin-bottom:14px">Search Specification</h3><div class="spec-grid">'
+    +'<div class="spec-item"><div class="spec-key">Role</div><div class="spec-val">'+escHtml(spec.role_title)+'</div></div>'
+    +'<div class="spec-item"><div class="spec-key">Seniority</div><div class="spec-val">'+escHtml(spec.seniority_level)+'</div></div>'
+    +'<div class="spec-item"><div class="spec-key">Location</div><div class="spec-val">'+escHtml(spec.location||'--')+'</div></div>'
+    +'<div class="spec-item"><div class="spec-key">Must-Have Skills</div><div class="spec-val">'+escHtml(spec.must_have_skills.join(', '))+'</div></div>'
+    +'<div class="spec-item"><div class="spec-key">Nice-to-Have</div><div class="spec-val">'+escHtml(spec.nice_to_have_skills.join(', '))+'</div></div>'
+    +'<div class="spec-item"><div class="spec-key">Gap Flags</div><div>'+gapFlagsHtml+'</div></div>'
+    +'</div>';
+  document.getElementById('spec-panel').innerHTML='';
+  document.getElementById('spec-panel').insertAdjacentHTML('beforeend',specHtml);
+
+  var rejHtml='<div class="rejected-count-badge">'+data.rejected_count+'</div>'
+    +'<div class="rejected-label"><strong>Hard Rejected</strong>Missing 2+ must-have skills or extreme seniority mismatch. Dropped from shortlist.</div>';
+  document.getElementById('rejected-row').innerHTML='';
+  document.getElementById('rejected-row').insertAdjacentHTML('beforeend',rejHtml);
+
+  document.getElementById('accepted-count').textContent=data.accepted.length;
+  document.getElementById('close-count').textContent=data.close.length;
+  renderCards('accepted-cards',data.accepted,'accepted');
+  renderCards('close-cards',data.close,'close');
+
+  document.getElementById('results').classList.add('visible');
+  setTimeout(function(){document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'})},100);
+  setTimeout(function(){
+    document.querySelectorAll('.profile-card').forEach(function(el,i){
+      setTimeout(function(){el.classList.add('animated')},i*60);
+    });
+  },200);
+}
+
+function renderJDAnalysis(spec){
+  var panel=document.getElementById('jda-panel');
+  panel.style.display='block';
+
+  // quality tier
+  var qs=spec.jd_quality_score||10;
+  var tier=qs>=8?'good':qs>=5?'ok':'poor';
+  var tierLabel=qs>=8?'Good':qs>=5?'Needs Work':'Poor';
+
+  // issues
+  var issuesHtml='';
+  if(spec.jd_issues&&spec.jd_issues.length){
+    spec.jd_issues.forEach(function(iss){
+      issuesHtml+='<div class="issue-item"><span class="issue-dot"></span><span>'+escHtml(iss)+'</span></div>';
+    });
+  }else{
+    issuesHtml='<span class="no-issues">\u2713 No issues detected</span>';
+  }
+
+  // skills pills builder
+  function pillsFor(arr,cls){
+    if(!arr||!arr.length)return '<span style="color:var(--text-dim);font-size:12px">—</span>';
+    return arr.map(function(s){return'<span class="pill '+cls+'">'+escHtml(s)+'</span>'}).join('');
+  }
+
+  // cleaned JD section (only if meaningfully different from raw)
+  var cleanedSection='';
+  if(spec.cleaned_jd&&spec.cleaned_jd.trim()){
+    cleanedSection=
+      '<button class="cleaned-jd-toggle" onclick="toggleCleanedJD(this)">'
+      +'<span class="toggle-arrow">\u25B6</span> Show Rewritten JD'
+      +'</button>'
+      +'<div class="cleaned-jd-body">'+escHtml(spec.cleaned_jd)+'</div>';
+  }
+
+  var html=
+    '<div class="jda-header">'
+      +'<h3>JD Analysis</h3>'
+      +'<span class="layer-tag">LAYER 02</span>'
+    +'</div>'
+    +'<div class="jda-grid">'
+      // col 1 — quality gauge
+      +'<div class="quality-gauge quality-'+tier+'">'
+        +'<div class="jda-section-label">Quality Score</div>'
+        +'<div class="quality-score-num">'+qs+'</div>'
+        +'<div class="quality-score-denom">/ 10</div>'
+        +'<div class="quality-bar-bg"><div class="quality-bar-fill" style="width:'+(qs*10)+'%"></div></div>'
+        +'<div class="quality-label">'+tierLabel+'</div>'
+      +'</div>'
+      // col 2 — issues
+      +'<div>'
+        +'<div class="jda-section-label">Issues Detected</div>'
+        +'<div class="issue-list">'+issuesHtml+'</div>'
+      +'</div>'
+      // col 3 — core requirements
+      +'<div>'
+        +'<div class="jda-section-label">Core Role Requirements</div>'
+        +(spec.core_requirements
+          ?'<div class="core-req-text">'+escHtml(spec.core_requirements)+'</div>'
+          :'<span style="color:var(--text-dim);font-size:12px">—</span>')
+      +'</div>'
+    +'</div>'
+    // skills rows
+    +'<div class="jda-skills-block">'
+      +'<div class="jda-section-label" style="margin-bottom:8px">Must-Have Skills (from JD)</div>'
+      +'<div class="skills-row">'+pillsFor(spec.must_have_skills,'pill-match')+'</div>'
+    +'</div>'
+    +'<div class="jda-skills-block">'
+      +'<div class="jda-section-label" style="margin-bottom:8px">Nice-to-Have Skills (from JD)</div>'
+      +'<div class="skills-row">'+pillsFor(spec.nice_to_have_skills,'pill pill-gap')+'</div>'
+    +'</div>'
+    +(spec.inferred_skills&&spec.inferred_skills.length
+      ?'<div class="jda-skills-block">'
+          +'<div class="jda-section-label" style="margin-bottom:8px">Inferred via Role Knowledge <span style="color:var(--purple);font-size:10px;margin-left:6px">added by agent</span></div>'
+          +'<div class="skills-row">'+pillsFor(spec.inferred_skills,'pill pill-inferred')+'</div>'
+        +'</div>'
+      :'')
+    +cleanedSection;
+
+  panel.innerHTML='';
+  panel.insertAdjacentHTML('beforeend',html);
+}
+
+function toggleCleanedJD(btn){
+  var body=btn.nextElementSibling;
+  var arrow=btn.querySelector('.toggle-arrow');
+  var isOpen=body.classList.toggle('open');
+  arrow.classList.toggle('open',isOpen);
+  btn.childNodes[1].textContent=' '+(isOpen?'Hide':'Show')+' Rewritten JD';
+}
+
+function renderCards(containerId,profiles,bucket){
+  var container=document.getElementById(containerId);
+  container.textContent='';
+  if(!profiles||profiles.length===0){
+    var empty=document.createElement('div');empty.className='empty-state';empty.textContent='No profiles in this bucket.';container.appendChild(empty);return;
+  }
+  for(var i=0;i<profiles.length;i++){
+    var frag=document.createElement('div');
+    frag.insertAdjacentHTML('beforeend',profileCardHTML(profiles[i],bucket));
+    container.appendChild(frag.firstElementChild);
+  }
+}
+
+function profileCardHTML(sp,bucket){
+  var p=sp.profile;
+  var scorePct=Math.round(sp.score_pct*100);
+  var matchedHtml='';for(var i=0;i<sp.matched.length;i++){matchedHtml+='<span class="pill pill-match">'+escHtml(sp.matched[i])+'</span>'}
+  var gapsHtml='';for(var j=0;j<sp.gaps.length;j++){gapsHtml+='<span class="pill pill-gap">&#x2717; '+escHtml(sp.gaps[j])+'</span>'}
+  var altBadge=p.alt_profiles&&p.alt_profiles.length?'<span class="pill" style="background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple-dim);font-size:10px">+'+p.alt_profiles.length+' source'+(p.alt_profiles.length>1?'s':'')+'</span>':'';
+  var pUrl=p.primary_url||'';
+  var isResume=pUrl.startsWith('resume://');
+  var shortUrl=isResume?escHtml(pUrl.replace('resume://',''))
+    :escHtml(pUrl.replace('https://','').split('/').slice(0,4).join('/'));
+  var sourceBadge=p.primary_source==='resume_upload'
+    ?'<span class="pill" style="background:rgba(251,146,60,.12);color:var(--orange);border:1px solid var(--orange-dim);font-size:10px">resume</span>':'';
+  var urlEl=isResume
+    ?'<span class="profile-url" style="cursor:default">'+shortUrl+'</span>'
+    :'<a class="profile-url" href="'+escHtml(pUrl)+'" target="_blank" rel="noopener">'+shortUrl+'</a>';
+  return '<div class="profile-card '+bucket+'">'
+    +'<div class="card-top">'
+    +'<div>'
+    +'<div class="profile-name">'+escHtml(p.name)+'</div>'
+    +'<div class="profile-meta"><strong>'+escHtml(p.title)+'</strong> &middot; '+escHtml(p.company)+'</div>'
+    +'<div class="profile-meta">'+escHtml(p.location||'--')+'</div>'
+    +'</div>'
+    +'<div style="text-align:right">'
+    +urlEl
+    +sourceBadge
+    +altBadge
+    +'</div>'
+    +'</div>'
+    +'<div class="score-bar-wrap">'
+    +'<div class="score-bar-label"><span>Score</span><span class="score-num">'+scorePct+'%</span></div>'
+    +'<div class="score-bar-bg"><div class="score-bar-fill" style="width:'+scorePct+'%"></div></div>'
+    +'</div>'
+    +(matchedHtml?'<div class="skills-row">'+matchedHtml+'</div>':'')
+    +(gapsHtml?'<div class="skills-row">'+gapsHtml+'</div>':'')
+    +'<div class="reasoning">'+escHtml(sp.reasoning)+'</div>'
+    +'</div>';
+}
+
+function setLoading(state){
+  var btn=document.getElementById('btn-run');btn.disabled=state;btn.classList.toggle('loading',state);
+}
+function showError(msg){var el=document.getElementById('error-banner');el.textContent=msg;el.classList.add('visible')}
+function hideError(){document.getElementById('error-banner').classList.remove('visible')}
+
+document.getElementById('jd-text').addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))runPipeline();
+});
+
+onSliderChange();
+</script>
+</body>
+</html>

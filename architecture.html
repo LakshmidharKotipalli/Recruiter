@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Recruiter — System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=IBM+Plex+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #03070F;
+  --card:      #0A1428;
+  --border:    rgba(0, 212, 255, 0.12);
+  --border-mid:rgba(0, 212, 255, 0.25);
+  --cyan:      #00D4FF;
+  --orange:    #FF6B35;
+  --green:     #00E87A;
+  --gold:      #FFD166;
+  --purple:    #9B72CF;
+  --red:       #FF4D6D;
+  --teal:      #00C9A7;
+  --rose:      #F472B6;
+  --amber:     #FBBF24;
+  --text:      #D8EAFF;
+  --text-mid:  #7B9BC4;
+  --text-dim:  #3D5A80;
+  --serif:     'Cormorant Garamond', Georgia, serif;
+  --mono:      'IBM Plex Mono', 'Courier New', monospace;
+  --sans:      'DM Sans', system-ui, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  pointer-events: none; z-index: 0;
+}
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
+
+/* ─── HEADER ─── */
+header { padding: 64px 0 48px; position: relative; z-index: 1; }
+
+.header-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.25);
+  border-radius: 100px; padding: 5px 14px;
+  font-family: var(--mono); font-size: 10px; color: var(--cyan);
+  letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px;
+}
+.header-badge::before {
+  content: ''; width: 5px; height: 5px; background: var(--cyan);
+  border-radius: 50%; animation: pulse 2s ease infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(0,212,255,0.4); }
+  50%     { opacity:0.7; box-shadow: 0 0 0 5px rgba(0,212,255,0); }
+}
+
+header h1 { font-family: var(--serif); font-size: clamp(2.2rem, 5vw, 3.6rem); font-weight: 600; line-height: 1.08; letter-spacing: -0.02em; }
+header h1 em { font-style: italic; color: var(--cyan); }
+header p { margin-top: 16px; font-size: 15px; color: var(--text-mid); max-width: 600px; line-height: 1.65; }
+
+/* ─── SECTION ─── */
+.section { margin-bottom: 48px; }
+.section-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px;
+}
+.section-title { font-family: var(--serif); font-size: 1.6rem; font-weight: 600; margin-bottom: 8px; }
+.section-desc { font-size: 13.5px; color: var(--text-mid); max-width: 640px; line-height: 1.65; margin-bottom: 24px; }
+
+/* ─── MODE CARDS ─── */
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.mode-card {
+  border-radius: 16px; overflow: hidden; position: relative;
+  background: var(--card); border: 1px solid var(--border);
+}
+.mode-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; background: var(--mode-color, var(--cyan));
+}
+.mode-body { padding: 28px; }
+.mode-icon { font-size: 28px; margin-bottom: 12px; }
+.mode-name { font-family: var(--serif); font-size: 1.35rem; font-weight: 600; margin-bottom: 4px; }
+.mode-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em; margin-bottom: 14px; }
+.mode-desc { font-size: 13px; color: var(--text-mid); line-height: 1.65; margin-bottom: 18px; }
+
+.mode-steps { display: flex; flex-direction: column; gap: 6px; }
+.mode-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.04);
+  font-size: 12px; color: var(--text);
+}
+.mode-step .ms-num {
+  font-family: var(--mono); font-size: 9px; color: var(--mode-color, var(--text-dim));
+  letter-spacing: 0.08em; flex-shrink: 0; width: 16px;
+}
+.mode-step .ms-icon { font-size: 14px; flex-shrink: 0; }
+.mode-step .ms-name { font-weight: 500; }
+.mode-step.hitl {
+  background: rgba(251,191,36,0.06); border-color: rgba(251,191,36,0.2);
+}
+.mode-step.hitl .ms-name { color: var(--amber); }
+.mode-step.loop {
+  background: rgba(155,114,207,0.06); border-color: rgba(155,114,207,0.2);
+}
+.mode-step.loop .ms-name { color: var(--purple); }
+
+/* ─── SOURCE SECTION ─── */
+.source-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+.source-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 22px; position: relative;
+  border-top: 3px solid var(--src-color, var(--purple));
+}
+.src-icon { font-size: 24px; margin-bottom: 10px; }
+.src-name { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.src-type { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.04em; margin-bottom: 10px; }
+.src-desc { font-size: 12px; color: var(--text-mid); line-height: 1.6; margin-bottom: 12px; }
+.src-badge {
+  display: inline-block; font-family: var(--mono); font-size: 9px; padding: 3px 8px;
+  border-radius: 4px; letter-spacing: 0.06em;
+  background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.src-badge.active { background: rgba(0,232,122,0.08); border-color: rgba(0,232,122,0.25); color: var(--green); }
+.src-badge.planned { background: rgba(255,209,102,0.06); border-color: rgba(255,209,102,0.2); color: var(--gold); }
+
+/* ─── LAYER STACK ─── */
+.stack { display: flex; flex-direction: column; gap: 0; position: relative; z-index: 1; padding-bottom: 60px; }
+
+.connector { display: flex; align-items: center; justify-content: center; padding: 8px 0; position: relative; }
+.connector-line { width: 2px; height: 28px; background: linear-gradient(to bottom, var(--layer-color, rgba(0,212,255,0.3)), transparent); margin: 0 auto; }
+.connector-schema {
+  position: absolute; left: calc(50% + 20px); top: 50%; transform: translateY(-50%);
+  font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); letter-spacing: 0.04em; white-space: nowrap;
+  padding: 3px 8px; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 4px;
+}
+
+.layer {
+  border: 1px solid var(--layer-color, var(--border)); border-radius: 16px;
+  overflow: hidden; background: var(--card); position: relative;
+}
+.layer::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--layer-color, var(--cyan)); }
+
+.layer-label-bar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 48px;
+  border-right: 1px solid var(--layer-color, var(--border));
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.15);
+}
+.layer-label-bar span {
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--layer-color, var(--text-dim));
+  writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); opacity: 0.85;
+}
+
+.layer-body { padding: 24px 28px 24px 68px; }
+.layer-title-row { display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+.layer-num { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+.layer-title { font-family: var(--serif); font-size: 1.35rem; font-weight: 600; line-height: 1.15; }
+.layer-desc { font-size: 13px; color: var(--text-mid); max-width: 640px; line-height: 1.65; margin-bottom: 20px; }
+
+.components { display: flex; flex-wrap: wrap; gap: 12px; }
+.component {
+  background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px; padding: 16px 18px; min-width: 170px; flex: 1 1 170px; max-width: 280px;
+  border-top: 2px solid var(--layer-color, var(--border));
+}
+.component:hover { background: rgba(0,0,0,0.4); }
+.component-icon { font-size: 18px; margin-bottom: 10px; }
+.component-name { font-size: 12.5px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
+.component-detail { font-family: var(--mono); font-size: 10px; color: var(--text-dim); line-height: 1.6; letter-spacing: 0.02em; }
+
+.schema-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); align-items: center; }
+.schema-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-right: 4px; }
+.schema-pill {
+  font-family: var(--mono); font-size: 10.5px; padding: 3px 10px; border-radius: 5px;
+  background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.15); color: rgba(0,212,255,0.7); letter-spacing: 0.02em;
+}
+.schema-pill.orange { background: rgba(255,107,53,0.06); border-color: rgba(255,107,53,0.2); color: rgba(255,107,53,0.75); }
+.schema-pill.green  { background: rgba(0,232,122,0.06); border-color: rgba(0,232,122,0.2); color: rgba(0,232,122,0.75); }
+.schema-pill.gold   { background: rgba(255,209,102,0.06); border-color: rgba(255,209,102,0.2); color: rgba(255,209,102,0.75); }
+.schema-pill.purple { background: rgba(155,114,207,0.06); border-color: rgba(155,114,207,0.2); color: rgba(155,114,207,0.8); }
+.schema-pill.teal   { background: rgba(0,201,167,0.06); border-color: rgba(0,201,167,0.2); color: rgba(0,201,167,0.8); }
+.schema-pill.red    { background: rgba(255,77,109,0.06); border-color: rgba(255,77,109,0.2); color: rgba(255,77,109,0.75); }
+.schema-pill.rose   { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.2); color: rgba(244,114,182,0.8); }
+
+/* ─── AGENTIC LOOP ─── */
+.loop-box {
+  background: rgba(155,114,207,0.05); border: 2px dashed rgba(155,114,207,0.3);
+  border-radius: 14px; padding: 22px 24px; margin-top: 18px; position: relative;
+}
+.loop-tag {
+  position: absolute; top: -10px; left: 24px;
+  background: var(--bg); padding: 0 10px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+  color: var(--purple); letter-spacing: 0.06em;
+}
+.loop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.loop-item {
+  padding: 10px 12px; border-radius: 8px;
+  background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.04);
+}
+.loop-action { font-size: 11.5px; font-weight: 600; margin-bottom: 3px; }
+.loop-desc { font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+
+/* score bars */
+.score-bars { display: flex; flex-direction: column; gap: 10px; }
+.sbar-row { display: flex; flex-direction: column; gap: 5px; }
+.sbar-header { display: flex; justify-content: space-between; align-items: baseline; }
+.sbar-name { font-size: 12px; font-weight: 500; }
+.sbar-pct { font-family: var(--mono); font-size: 11px; color: var(--text-mid); }
+.sbar-bg { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+.sbar-fill { height: 100%; border-radius: 3px; animation: grow 1.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* output buckets */
+.bucket-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.bucket { flex: 1 1 160px; border-radius: 10px; padding: 18px 20px; border: 1px solid; }
+.bucket.accepted { background: rgba(0,232,122,0.05); border-color: rgba(0,232,122,0.2); }
+.bucket.close    { background: rgba(255,209,102,0.05); border-color: rgba(255,209,102,0.2); }
+.bucket.dropped  { background: rgba(255,77,109,0.04); border-color: rgba(255,77,109,0.15); }
+.bucket-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+.bucket.accepted .bucket-label { color: var(--green); }
+.bucket.close    .bucket-label { color: var(--gold); }
+.bucket.dropped  .bucket-label { color: var(--red); }
+.bucket-count { font-family: var(--serif); font-size: 1.8rem; font-weight: 700; line-height: 1; margin-bottom: 5px; }
+.bucket.accepted .bucket-count { color: var(--green); }
+.bucket.close    .bucket-count { color: var(--gold); }
+.bucket.dropped  .bucket-count { color: var(--red); }
+.bucket-desc { font-size: 11.5px; color: var(--text-mid); line-height: 1.5; }
+
+/* dedup signal table */
+.signal-table { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.signal-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 8px; }
+.signal-priority { font-family: var(--mono); font-size: 9px; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.08em; flex-shrink: 0; }
+.signal-row:nth-child(1) .signal-priority { background: rgba(0,232,122,0.1); color: var(--green); border: 1px solid rgba(0,232,122,0.25); }
+.signal-row:nth-child(2) .signal-priority { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.25); }
+.signal-row:nth-child(3) .signal-priority { background: rgba(255,209,102,0.1); color: var(--gold); border: 1px solid rgba(255,209,102,0.25); }
+.signal-row:nth-child(4) .signal-priority { background: rgba(255,107,53,0.1); color: var(--orange); border: 1px solid rgba(255,107,53,0.25); }
+.signal-name { font-size: 12px; font-weight: 500; }
+.signal-desc { font-size: 11px; color: var(--text-dim); margin-left: auto; font-family: var(--mono); }
+
+/* mode badges on layers */
+.mode-badges { display: flex; gap: 6px; margin-left: auto; }
+.mbadge {
+  font-family: var(--mono); font-size: 8.5px; padding: 2px 8px; border-radius: 4px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.mbadge.sourcing { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); color: var(--cyan); }
+.mbadge.resume   { background: rgba(244,114,182,0.08); border: 1px solid rgba(244,114,182,0.2); color: var(--rose); }
+
+/* ─── ENDPOINT TABLE ─── */
+.endpoint-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.endpoint-table thead th {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); padding: 10px 14px; text-align: left;
+  border-bottom: 1px solid var(--border-mid);
+}
+.endpoint-table tbody td {
+  font-size: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border);
+  color: var(--text-mid);
+}
+.endpoint-table tbody tr:hover td { background: rgba(0,212,255,0.03); }
+.endpoint-table .ep-method {
+  font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 2px 8px;
+  border-radius: 4px; letter-spacing: 0.04em; display: inline-block;
+}
+.ep-method.get  { background: rgba(0,232,122,0.1); color: var(--green); border: 1px solid rgba(0,232,122,0.25); }
+.ep-method.post { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.25); }
+.endpoint-table .ep-path {
+  font-family: var(--mono); font-size: 11px; color: var(--text); letter-spacing: 0.02em;
+}
+.ep-stream {
+  font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px;
+  letter-spacing: 0.06em;
+}
+.ep-stream.sse  { background: rgba(255,209,102,0.1); color: var(--gold); border: 1px solid rgba(255,209,102,0.2); }
+.ep-stream.json { background: rgba(155,114,207,0.08); color: var(--purple); border: 1px solid rgba(155,114,207,0.2); }
+.ep-stream.na   { color: var(--text-dim); }
+
+/* ─── TECH STACK ─── */
+.tech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tech-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px; position: relative; border-top: 2px solid var(--tech-color, var(--cyan));
+}
+.tech-icon { font-size: 22px; margin-bottom: 10px; }
+.tech-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.tech-detail { font-family: var(--mono); font-size: 10px; color: var(--text-dim); line-height: 1.6; letter-spacing: 0.02em; }
+
+@media (max-width: 720px) {
+  .wrap { padding: 0 18px; }
+  .mode-grid { grid-template-columns: 1fr; }
+  .source-row { grid-template-columns: 1fr 1fr; }
+  .loop-grid { grid-template-columns: 1fr 1fr; }
+  .layer-body { padding: 20px 20px 20px 56px; }
+  .layer-label-bar { width: 36px; }
+  .signal-desc { display: none; }
+  .tech-grid { grid-template-columns: 1fr 1fr; }
+  .endpoint-table { font-size: 11px; }
+  .endpoint-table thead th, .endpoint-table tbody td { padding: 8px 10px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-badge">System Architecture</div>
+    <h1>AI Recruiter —<br><em>Two Paths, One Engine</em></h1>
+    <p>An agentic pipeline that understands job descriptions, finds or evaluates candidates, and delivers a ranked shortlist. Two modes of operation share the same AI orchestrator, scoring formula, and human checkpoints.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ═══════ TWO MODES ═══════ -->
+  <div class="section">
+    <div class="section-label">How Recruiting Happens</div>
+    <div class="section-title">Two Modes of Operation</div>
+    <div class="section-desc">The recruiter chooses how candidates enter the system. Both modes pass through the same AI intelligence, scoring, and quality-checking layers.</div>
+
+    <div class="mode-grid">
+
+      <div class="mode-card" style="--mode-color: var(--cyan);">
+        <div class="mode-body">
+          <div class="mode-icon">🌐</div>
+          <div class="mode-name">Sourcing Mode</div>
+          <div class="mode-sub">Find candidates from the internet</div>
+          <div class="mode-desc">Recruiter provides a job description. The AI searches Google, Naukri, and People Data Labs simultaneously to find matching professionals, then scores and ranks them.</div>
+          <div class="mode-steps">
+            <div class="mode-step"><span class="ms-num">1</span><span class="ms-icon">🧹</span><span class="ms-name">Understand the job description</span></div>
+            <div class="mode-step hitl"><span class="ms-num">H1</span><span class="ms-icon">✋</span><span class="ms-name">Recruiter reviews extracted spec</span></div>
+            <div class="mode-step"><span class="ms-num">2</span><span class="ms-icon">🔍</span><span class="ms-name">Build search queries for each source</span></div>
+            <div class="mode-step"><span class="ms-num">3</span><span class="ms-icon">🌐</span><span class="ms-name">Search all platforms in parallel</span></div>
+            <div class="mode-step"><span class="ms-num">4</span><span class="ms-icon">🔗</span><span class="ms-name">Remove cross-platform duplicates</span></div>
+            <div class="mode-step hitl"><span class="ms-num">H2</span><span class="ms-icon">✋</span><span class="ms-name">Recruiter checks if pool is large enough</span></div>
+            <div class="mode-step"><span class="ms-num">5</span><span class="ms-icon">📊</span><span class="ms-name">Score and rank all candidates</span></div>
+            <div class="mode-step loop"><span class="ms-num">QC</span><span class="ms-icon">🔄</span><span class="ms-name">Quality check: refine search if too few matches</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-card" style="--mode-color: var(--rose);">
+        <div class="mode-body">
+          <div class="mode-icon">📄</div>
+          <div class="mode-name">Resume Match Mode</div>
+          <div class="mode-sub">Score uploaded resumes against a job</div>
+          <div class="mode-desc">Recruiter provides a job description AND uploads resume files. The AI reads each resume, extracts structured data, then scores everyone against the job requirements. Dedicated endpoints: <code style="font-family:var(--mono);font-size:10px;background:rgba(244,114,182,0.1);border:1px solid rgba(244,114,182,0.2);padding:1px 5px;border-radius:3px;color:var(--rose);">POST /api/resume/match</code> and <code style="font-family:var(--mono);font-size:10px;background:rgba(244,114,182,0.1);border:1px solid rgba(244,114,182,0.2);padding:1px 5px;border-radius:3px;color:var(--rose);">POST /api/resume/match/stream</code></div>
+          <div class="mode-steps">
+            <div class="mode-step"><span class="ms-num">1</span><span class="ms-icon">🧹</span><span class="ms-name">Understand the job description</span></div>
+            <div class="mode-step hitl"><span class="ms-num">H1</span><span class="ms-icon">✋</span><span class="ms-name">Recruiter reviews extracted spec</span></div>
+            <div class="mode-step"><span class="ms-num">2</span><span class="ms-icon">📄</span><span class="ms-name">Parse all uploaded resumes</span></div>
+            <div class="mode-step"><span class="ms-num">3</span><span class="ms-icon">📊</span><span class="ms-name">Deduplicate, score, and rank</span></div>
+            <div class="mode-step loop"><span class="ms-num">QC</span><span class="ms-icon">🔄</span><span class="ms-name">Quality check: relax criteria if too few matches</span></div>
+            <div class="mode-step"><span class="ms-num"></span><span class="ms-icon">🔧</span><span class="ms-name" style="color:var(--text-mid);">If relaxed: re-score with loosened must-haves</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════ PROFILE SOURCES ═══════ -->
+  <div class="section">
+    <div class="section-label">Where Candidates Come From</div>
+    <div class="section-title">Profile Sources</div>
+    <div class="section-desc">Three external talent platforms are searched in parallel during sourcing mode. Resume uploads provide a fourth input channel. The architecture supports adding new sources as pluggable modules.</div>
+
+    <div class="source-row">
+
+      <div class="source-card" style="--src-color: var(--cyan);">
+        <div class="src-icon">🔗</div>
+        <div class="src-name">Google CSE</div>
+        <div class="src-type">Custom Search Engine API</div>
+        <div class="src-desc">Searches LinkedIn public profiles and professional pages using Boolean queries. Best for finding globally visible tech talent.</div>
+        <div class="src-badge active">Active &bull; Global</div>
+      </div>
+
+      <div class="source-card" style="--src-color: var(--orange);">
+        <div class="src-icon">🇮🇳</div>
+        <div class="src-name">Naukri</div>
+        <div class="src-type">Partner API</div>
+        <div class="src-desc">India's largest job portal with deep resume database. Returns rich profiles with skills, experience, and salary expectations.</div>
+        <div class="src-badge active">Active &bull; India / APAC</div>
+      </div>
+
+      <div class="source-card" style="--src-color: var(--purple);">
+        <div class="src-icon">🧠</div>
+        <div class="src-name">People Data Labs</div>
+        <div class="src-type">Person Search API</div>
+        <div class="src-desc">Enriched professional graph with 1.5B+ records. Field-based filters for skills, title, location, and company. Highest data completeness.</div>
+        <div class="src-badge active">Active &bull; Global</div>
+      </div>
+
+      <div class="source-card" style="--src-color: var(--rose);">
+        <div class="src-icon">📄</div>
+        <div class="src-name">Resume Upload</div>
+        <div class="src-type">Direct File Input</div>
+        <div class="src-desc">Recruiter uploads PDF or text resume files. AI extracts structured profiles with name, skills, experience, education, and contact info.</div>
+        <div class="src-badge active">Active &bull; Resume Mode</div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ═══════ LAYER STACK ═══════ -->
+<div class="stack">
+  <div class="wrap">
+
+    <div class="section" style="margin-bottom:24px;">
+      <div class="section-label">Pipeline Layers</div>
+      <div class="section-title">Seven Layers, Layer by Layer</div>
+      <div class="section-desc">Data flows downward through typed Pydantic schemas. Each layer has a single responsibility. Badges show which pipeline mode uses each layer.</div>
+    </div>
+
+    <!-- LAYER 1: INPUT -->
+    <div class="layer" style="--layer-color: rgba(0,212,255,0.5);">
+      <div class="layer-label-bar"><span>Input</span></div>
+      <div class="layer-body">
+        <div class="layer-title-row">
+          <span class="layer-num">Layer 01</span>
+          <h2 class="layer-title">Input Layer</h2>
+          <div class="mode-badges"><span class="mbadge sourcing">Sourcing</span><span class="mbadge resume">Resume</span></div>
+        </div>
+        <p class="layer-desc">The entry point. Recruiter provides a raw job description (text or PDF upload) and optionally adjusts scoring weights. In resume mode, resume files are also uploaded here.</p>
+        <div class="components">
+          <div class="component"><div class="component-icon">📋</div><div class="component-name">Job Description</div><div class="component-detail">Raw text or PDF file<br>Any format, any length (max 50K chars)<br>Handles sparse or messy JDs</div></div>
+          <div class="component"><div class="component-icon">⚙️</div><div class="component-name">Recruiter Config</div><div class="component-detail">Weight sliders (must/nice/seniority/loc)<br>Score thresholds for buckets<br>Hard-reject rules</div></div>
+          <div class="component" style="border-top-color: var(--rose);"><div class="component-icon">📄</div><div class="component-name">Resume Files (resume mode)</div><div class="component-detail">PDF or text uploads<br>Max 10 MB per file<br>Multiple resumes per request</div></div>
+        </div>
+        <div class="schema-row">
+          <span class="schema-label">Emits</span>
+          <span class="schema-pill">PipelineInput</span>
+          <span class="schema-pill">raw_jd</span>
+          <span class="schema-pill">RecruiterConfig</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector"><div class="connector-line" style="--layer-color: rgba(0,212,255,0.4);"></div><div class="connector-schema">raw_jd + config</div></div>
+
+    <!-- LAYER 2: INTELLIGENCE -->
+    <div class="layer" style="--layer-color: rgba(255,107,53,0.55);">
+      <div class="layer-label-bar"><span>Intelligence</span></div>
+      <div class="layer-body">
+        <div class="layer-title-row">
+          <span class="layer-num">Layer 02</span>
+          <h2 class="layer-title">JD Intelligence Layer</h2>
+          <div class="mode-badges"><span class="mbadge sourcing">Sourcing</span><span class="mbadge resume">Resume</span></div>
+        </div>
+        <p class="layer-desc">The JD Extraction Agent runs two sequential LLM passes to transform raw recruiter input into a structured SearchSpec. Step 1 scores quality and rewrites. Step 2 fills skill gaps using role knowledge and extracts the final typed spec. A human checkpoint pauses here for recruiter review.</p>
+        <div class="components">
+          <div class="component" style="border-top-color: rgba(255,107,53,0.6);"><div class="component-icon">🧹</div><div class="component-name">JD Cleaner</div><div class="component-detail">Quality score (0-10)<br>Issue detection<br>Rewrite into clean prose</div></div>
+          <div class="component" style="border-top-color: rgba(255,107,53,0.6);"><div class="component-icon">🧠</div><div class="component-name">Gap Filler + Extractor</div><div class="component-detail">Infer unstated skills<br>Resolve seniority ambiguity<br>Classify must-have vs nice-to-have</div></div>
+          <div class="component" style="border-top-color: rgba(251,191,36,0.5);"><div class="component-icon">✋</div><div class="component-name">HITL-1: Recruiter Review</div><div class="component-detail">Review extracted spec<br>Edit skills, title, location<br>Override before search/scoring</div></div>
+        </div>
+        <div class="schema-row">
+          <span class="schema-label">Emits</span>
+          <span class="schema-pill orange">SearchSpec</span>
+          <span class="schema-pill orange">must_have_skills[]</span>
+          <span class="schema-pill orange">nice_to_have_skills[]</span>
+          <span class="schema-pill orange">inferred_skills[]</span>
+          <span class="schema-pill orange">jd_quality_score</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector"><div class="connector-line" style="--layer-color: rgba(255,107,53,0.4);"></div><div class="connector-schema">SearchSpec</div></div>
+
+    <!-- LAYER 3: QUERY GEN (sourcing only) -->
+    <div class="layer" style="--layer-color: rgba(0,201,167,0.55);">
+      <div class="layer-label-bar"><span>Query Gen</span></div>
+      <div class="layer-body">
+        <div class="layer-title-row">
+          <span class="layer-num">Layer 03</span>
+          <h2 class="layer-title">Query Generation Layer</h2>
+          <div class="mode-badges"><span class="mbadge sourcing">Sourcing only</span></div>
+        </div>
+        <p class="layer-desc">The Query Generation Agent creates optimized Boolean search queries tailored to each platform's syntax. Produces 3-5 primary queries per source, each with a broader fallback variant. Supports three strategies: precise (default), broader (relaxed skills/seniority), and location_relaxed (drops location filter).</p>
+        <div class="components">
+          <div class="component" style="border-top-color: rgba(0,201,167,0.6);"><div class="component-icon">🔍</div><div class="component-name">Query Generator</div><div class="component-detail">Boolean synthesis per platform<br>3 strategies: precise / broader / relaxed<br>Primary + fallback queries</div></div>
+          <div class="component" style="border-top-color: rgba(0,201,167,0.6);"><div class="component-icon">🔄</div><div class="component-name">Refinement Strategy</div><div class="component-detail">broader: expand skill synonyms<br>location_relaxed: drop location<br>Activated by quality feedback loop</div></div>
+        </div>
+        <div class="schema-row">
+          <span class="schema-label">Emits</span>
+          <span class="schema-pill teal">QuerySet</span>
+          <span class="schema-pill teal">google_cse{primary[], fallback[]}</span>
+          <span class="schema-pill teal">naukri{primary[], fallback[]}</span>
+          <span class="schema-pill teal">pdl{primary[], fallback[]}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector"><div class="connector-line" style="--layer-color: rgba(0,201,167,0.4);"></div><div class="connector-schema">QuerySet (per source)</div></div>
+
+    <!-- LAYER 4: EXTERNAL INTEGRATION / RESUME PARSE -->
+    <div class="layer" style="--layer-color: rgba(155,114,207,0.55);">
+      <div class="layer-label-bar"><span>Fetch</span></div>
+      <div class="layer-body">
+        <div class="layer-title-row">
+          <span class="layer-num">Layer 04</span>
+          <h2 class="layer-title">Profile Acquisition Layer</h2>
+          <div class="mode-badges"><span class="mbadge sourcing">Sourcing</span><span class="mbadge resume">Resume</span></div>
+        </div>
+        <p class="layer-desc">How candidates enter the system depends on the mode. In sourcing mode, the Profile Fetching Agent dispatches queries to all three platforms simultaneously using async parallel I/O. In resume mode, the Resume Parser Agent reads each uploaded file and extracts structured profiles.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.15);border-radius:10px;padding:16px;">
+            <div style="font-size:12px;font-weight:600;color:var(--cyan);margin-bottom:8px;">Sourcing Mode: Parallel Fetch</div>
+            <div style="font-size:11px;color:var(--text-mid);line-height:1.6;">Async dispatch to Google CSE, Naukri, and PDL simultaneously. Per-source error isolation — one source failing doesn't block others. Returns combined RawProfile[] with source attribution.</div>
+          </div>
+          <div style="background:rgba(244,114,182,0.04);border:1px solid rgba(244,114,182,0.15);border-radius:10px;padding:16px;">
+            <div style="font-size:12px;font-weight:600;color:var(--rose);margin-bottom:8px;">Resume Mode: ResumeParserAgent</div>
+            <div style="font-size:11px;color:var(--text-mid);line-height:1.6;">The <strong style="color:var(--rose);">ResumeParserAgent</strong> reads each PDF/text resume via LLM extraction and produces structured RawProfile objects — name, title, skills, experience, education, and contact info. Handles wildly different formats. Falls back to heuristic parsing if LLM fails.</div>
+          </div>
+        </div>
+
+        <div class="schema-row">
+          <span class="schema-label">Emits</span>
+          <span class="schema-pill purple">RawProfile[]</span>
+          <span class="schema-pill purple">name, title, company</span>
+          <span class="schema-pill purple">skills[]</span>
+          <span class="schema-pill purple">experience[]</span>
+          <span class="schema-pill purple">source</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector"><div class="connector-line" style="--layer-color: rgba(155,114,207,0.4);"></div><div class="connector-schema">RawProfile[] (may contain duplicates)</div></div>
+
+    <!-- LAYER 5: DEDUP -->
+    <div class="layer" style="--layer-color: rgba(0,232,122,0.5);">
+      <div class="layer-label-bar"><span>Dedup</span></div>
+      <div class="layer-body">
+        <div class="layer-title-row">
+          <span class="layer-num">Layer 05</span>
+          <h2 class="layer-title">Deduplication Layer</h2>
+          <div class="mode-badges"><span class="mbadge sourcing">Sourcing</span><span class="mbadge resume">Resume</span></div>
+        </div>
+        <p class="layer-desc">The same person often appears across platforms (or duplicate resume uploads). This layer collapses them into a single canonical record using priority-ordered identity matching. Retains the best data per field and preserves alternate source URLs.</p>
+        <div class="signal-table">
+          <div class="signal-row"><span class="signal-priority">P1</span><span class="signal-name">Email address</span><span class="signal-desc">Exact match — definitive</span></div>
+          <div class="signal-row"><span class="signal-priority">P2</span><span class="signal-name">Name + Company overlap</span><span class="signal-desc">Fuzzy name (80% token match), same company</span></div>
+          <div class="signal-row"><span class="signal-priority">P3</span><span class="signal-name">Title + Location</span><span class="signal-desc">Same role at same location</span></div>
+          <div class="signal-row"><span class="signal-priority">P4</span><span class="signal-name">Phone number</span><span class="signal-desc">When available from enriched records</span></div>
+        </div>
+        <div class="schema-row">
+          <span class="schema-label">Emits</span>
+          <span class="schema-pill green">DedupedProfile[]</span>
+          <span class="schema-pill green">alt_profiles[]</span>
+          <span class="schema-pill green">merged_fields{}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector"><div class="connector-line" style="--layer-color: rgba(0,232,122,0.4);"></div><div class="connector-schema">DedupedProfile[]</div></div>
+
+    <!-- LAYER 6: SCORING -->
+    <div class="layer" style="--layer-color: rgba(255,209,102,0.55);">
+      <div class="layer-label-bar"><span>Scoring</span></div>
+      <div class="layer-body">
+        <div class="layer-title-row">
+          <span class="layer-num">Layer 06</span>
+          <h2 class="layer-title">Scoring &amp; Ranking Layer</h2>
+          <div class="mode-badges"><span class="mbadge sourcing">Sourcing</span><span class="mbadge resume">Resume</span></div>
+        </div>
+        <p class="layer-desc">The Ranking Agent scores each deduplicated profile against the SearchSpec using a transparent weighted formula. Must-have gate: missing more than 1 must-have skill = auto-rejected regardless of total score. Each profile gets a natural-language reasoning explanation.</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+          <div>
+            <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">Score Formula</div>
+            <div class="score-bars">
+              <div class="sbar-row"><div class="sbar-header"><span class="sbar-name">Must-Have Skills</span><span class="sbar-pct">w1 = 50%</span></div><div class="sbar-bg"><div class="sbar-fill" style="width:50%;background:linear-gradient(90deg,#00D4FF,#0090b0);"></div></div></div>
+              <div class="sbar-row"><div class="sbar-header"><span class="sbar-name">Nice-to-Have Skills</span><span class="sbar-pct">w2 = 25%</span></div><div class="sbar-bg"><div class="sbar-fill" style="width:25%;background:linear-gradient(90deg,#9B72CF,#6B4FA0);"></div></div></div>
+              <div class="sbar-row"><div class="sbar-header"><span class="sbar-name">Seniority Level</span><span class="sbar-pct">w3 = 15%</span></div><div class="sbar-bg"><div class="sbar-fill" style="width:15%;background:linear-gradient(90deg,#FF6B35,#C04A20);"></div></div></div>
+              <div class="sbar-row"><div class="sbar-header"><span class="sbar-name">Location Match</span><span class="sbar-pct">w4 = 10%</span></div><div class="sbar-bg"><div class="sbar-fill" style="width:10%;background:linear-gradient(90deg,#FFD166,#C09A40);"></div></div></div>
+            </div>
+            <div style="margin-top:12px;font-family:var(--mono);font-size:10.5px;color:var(--text-dim);line-height:1.8;padding:10px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;">
+              score = w1*must_have + w2*nice_have + w3*seniority + w4*location<br>
+              <span style="opacity:0.5;">Weights are recruiter-configurable, normalized to sum = 1.0</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">Per-Profile Output</div>
+            <div class="components">
+              <div class="component" style="border-top-color: rgba(255,209,102,0.6); max-width:100%;"><div class="component-icon">⚖️</div><div class="component-name">Scored Profile</div><div class="component-detail">score_pct: 0.0 - 1.0<br>matched[]: skills that hit<br>gaps[]: skills that missed<br>reasoning: 1-2 sentence NL<br>bucket: accepted | close | rejected</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agentic loop -->
+        <div class="loop-box">
+          <div class="loop-tag">Agentic Feedback Loop &mdash; max 3 iterations</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--purple);">Quality Checker decides: is the shortlist good enough?</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:10px;font-family:var(--mono);letter-spacing:0.02em;">Pure Python logic — no LLM involved. All thresholds configurable via env vars (MIN_ACCEPTED, HITL_MIN_RAW, MAX_ITERATIONS).</div>
+          <div class="loop-grid">
+            <div class="loop-item"><div class="loop-action" style="color:var(--green);">Accept</div><div class="loop-desc">Enough accepted candidates meet threshold. Deliver results.</div></div>
+            <div class="loop-item"><div class="loop-action" style="color:var(--gold);">Broaden Search</div><div class="loop-desc">Sourcing: re-generate queries with expanded skills. Resume: move a must-have to nice-to-have.</div></div>
+            <div class="loop-item"><div class="loop-action" style="color:var(--cyan);">Relax Location</div><div class="loop-desc">Sourcing: drop location filter from queries. Resume: clear location requirement on spec.</div></div>
+            <div class="loop-item"><div class="loop-action" style="color:var(--red);">Force Accept</div><div class="loop-desc">Max iterations reached with 0 accepted. Promote top "close" candidates.</div></div>
+          </div>
+        </div>
+
+        <div class="schema-row">
+          <span class="schema-label">Emits</span>
+          <span class="schema-pill gold">ScoredProfile[]</span>
+          <span class="schema-pill gold">score_pct</span>
+          <span class="schema-pill gold">matched[]</span>
+          <span class="schema-pill gold">gaps[]</span>
+          <span class="schema-pill gold">reasoning</span>
+          <span class="schema-pill gold">bucket</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector"><div class="connector-line" style="--layer-color: rgba(255,209,102,0.4);"></div><div class="connector-schema">ScoredProfile[]</div></div>
+
+    <!-- LAYER 7: OUTPUT -->
+    <div class="layer" style="--layer-color: rgba(255,77,109,0.45);">
+      <div class="layer-label-bar"><span>Output</span></div>
+      <div class="layer-body">
+        <div class="layer-title-row">
+          <span class="layer-num">Layer 07</span>
+          <h2 class="layer-title">Output Layer</h2>
+          <div class="mode-badges"><span class="mbadge sourcing">Sourcing</span><span class="mbadge resume">Resume</span></div>
+        </div>
+        <p class="layer-desc">Scored profiles are bucketed and delivered as structured JSON (for API/ATS integration) alongside a full execution trace. The trace records every tool call with input/output keys, total LLM invocation count, each HITL decision with recruiter overrides, and every refinement reason across iterations.</p>
+
+        <div class="bucket-row">
+          <div class="bucket accepted">
+            <div class="bucket-label">Accepted</div>
+            <div class="bucket-count">Top</div>
+            <div class="bucket-desc">Score above threshold AND all must-haves present. Delivered with full match breakdown and contact data.</div>
+          </div>
+          <div class="bucket close">
+            <div class="bucket-label">Close Match</div>
+            <div class="bucket-count">Maybe</div>
+            <div class="bucket-desc">High score but missing 1 must-have, or wrong seniority. Preserved as overflow for quick re-sourcing.</div>
+          </div>
+          <div class="bucket dropped">
+            <div class="bucket-label">Rejected</div>
+            <div class="bucket-count">No</div>
+            <div class="bucket-desc">Missing 2+ must-haves or extreme mismatch. Count reported but profiles not surfaced to recruiter.</div>
+          </div>
+        </div>
+
+        <div class="schema-row">
+          <span class="schema-label">Final Output</span>
+          <span class="schema-pill red">PipelineOutput</span>
+          <span class="schema-pill red">accepted[]</span>
+          <span class="schema-pill red">close[]</span>
+          <span class="schema-pill red">rejected_count</span>
+          <span class="schema-pill red">search_spec</span>
+          <span class="schema-pill red">execution_trace</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /wrap -->
+</div><!-- /stack -->
+
+<!-- ═══════ API ENDPOINTS ═══════ -->
+<div class="wrap" style="padding-top: 16px; padding-bottom: 48px;">
+  <div class="section">
+    <div class="section-label">Server Interface</div>
+    <div class="section-title">API Endpoints</div>
+    <div class="section-desc">Seven REST endpoints powered by FastAPI. Mutation endpoints support optional API key auth, per-IP rate limiting, and CORS. Streaming endpoints use Server-Sent Events with backpressure-controlled queues.</div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;border-top:3px solid rgba(0,212,255,0.4);">
+      <table class="endpoint-table">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Response</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ep-method get">GET</span></td>
+            <td><span class="ep-path">/</span></td>
+            <td><span class="ep-stream na">&mdash;</span></td>
+            <td>Serve frontend UI (static/index.html)</td>
+          </tr>
+          <tr>
+            <td><span class="ep-method get">GET</span></td>
+            <td><span class="ep-path">/api/config</span></td>
+            <td><span class="ep-stream json">JSON</span></td>
+            <td>Return model + source configuration (keys redacted)</td>
+          </tr>
+          <tr>
+            <td><span class="ep-method post">POST</span></td>
+            <td><span class="ep-path">/api/run</span></td>
+            <td><span class="ep-stream json">JSON</span></td>
+            <td>Run sourcing pipeline, return PipelineOutput</td>
+          </tr>
+          <tr>
+            <td><span class="ep-method post">POST</span></td>
+            <td><span class="ep-path">/api/run/stream</span></td>
+            <td><span class="ep-stream sse">SSE</span></td>
+            <td>Run sourcing pipeline with real-time event streaming</td>
+          </tr>
+          <tr>
+            <td><span class="ep-method post">POST</span></td>
+            <td><span class="ep-path">/api/run/{run_id}/resume</span></td>
+            <td><span class="ep-stream json">JSON</span></td>
+            <td>Resume a HITL checkpoint (jd_review or profile_count)</td>
+          </tr>
+          <tr>
+            <td><span class="ep-method post">POST</span></td>
+            <td><span class="ep-path">/api/resume/match</span></td>
+            <td><span class="ep-stream json">JSON</span></td>
+            <td>Match uploaded resumes against JD</td>
+          </tr>
+          <tr>
+            <td><span class="ep-method post">POST</span></td>
+            <td><span class="ep-path">/api/resume/match/stream</span></td>
+            <td><span class="ep-stream sse">SSE</span></td>
+            <td>Resume matching with real-time event streaming</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════ TECHNOLOGY STACK ═══════ -->
+  <div class="section">
+    <div class="section-label">Under the Hood</div>
+    <div class="section-title">Technology Stack</div>
+    <div class="section-desc">A focused set of production-grade components. No heavy frameworks on the frontend, no ORMs on the backend. Each dependency earns its place.</div>
+
+    <div class="tech-grid">
+      <div class="tech-card" style="--tech-color: var(--cyan);">
+        <div class="tech-icon">&#9881;</div>
+        <div class="tech-name">Runtime</div>
+        <div class="tech-detail">Python 3.10+<br>FastAPI (async ASGI)<br>Uvicorn (ASGI server)</div>
+      </div>
+      <div class="tech-card" style="--tech-color: var(--orange);">
+        <div class="tech-icon">&#10047;</div>
+        <div class="tech-name">AI / LLM</div>
+        <div class="tech-detail">Anthropic Claude SDK<br>tool_use ReAct loop<br>OpenAI fallback (plain calls)</div>
+      </div>
+      <div class="tech-card" style="--tech-color: var(--green);">
+        <div class="tech-icon">&#9638;</div>
+        <div class="tech-name">Data Layer</div>
+        <div class="tech-detail">Pydantic v2 models<br>Typed schemas end-to-end<br>JSON serialization</div>
+      </div>
+      <div class="tech-card" style="--tech-color: var(--rose);">
+        <div class="tech-icon">&#9636;</div>
+        <div class="tech-name">Frontend</div>
+        <div class="tech-detail">Single-page app<br>Vanilla HTML / CSS / JS<br>No build step required</div>
+      </div>
+      <div class="tech-card" style="--tech-color: var(--gold);">
+        <div class="tech-icon">&#128462;</div>
+        <div class="tech-name">PDF Processing</div>
+        <div class="tech-detail">pypdf (primary)<br>Regex fallback extraction<br>Handles encrypted gracefully</div>
+      </div>
+      <div class="tech-card" style="--tech-color: var(--purple);">
+        <div class="tech-icon">&#8644;</div>
+        <div class="tech-name">Streaming</div>
+        <div class="tech-detail">Server-Sent Events (SSE)<br>Async EventBus per request<br>Backpressure queue (max 1000)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
