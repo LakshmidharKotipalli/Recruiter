@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recruiter Pipeline — Agent Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#03070F;--card:#0A1428;--card-border:rgba(0,212,255,.12);
+  --cyan:#00D4FF;--orange:#FF6B35;--green:#00E87A;--gold:#FFD166;
+  --purple:#9B72CF;--red:#FF4D6D;--teal:#00C9A7;
+  --text:#E0E6ED;--text-dim:#7A8BA0;--text-bright:#FFFFFF;
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'DM Sans',system-ui,sans-serif;
+  line-height:1.65;overflow-x:hidden;
+}
+
+/* ── Ambient background ── */
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0}
+.ambient .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.08;animation:drift 20s ease-in-out infinite alternate}
+.ambient .orb:nth-child(1){width:600px;height:600px;background:var(--cyan);top:-10%;left:-5%}
+.ambient .orb:nth-child(2){width:500px;height:500px;background:var(--purple);bottom:10%;right:-8%;animation-delay:-7s}
+.ambient .orb:nth-child(3){width:400px;height:400px;background:var(--orange);top:40%;left:50%;animation-delay:-13s}
+@keyframes drift{to{transform:translate(60px,-40px) scale(1.1)}}
+
+/* ── Layout ── */
+.container{max-width:1280px;margin:0 auto;padding:0 2rem;position:relative;z-index:1}
+section{padding:5rem 0}
+
+/* ── Hero ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative}
+.hero h1{
+  font-family:'Cormorant Garamond',serif;font-weight:700;
+  font-size:clamp(2.8rem,6vw,5.2rem);
+  background:linear-gradient(135deg,var(--cyan),var(--purple),var(--orange));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;line-height:1.15;margin-bottom:1rem;
+}
+.hero .subtitle{
+  font-family:'IBM Plex Mono',monospace;font-size:1rem;
+  color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:2.5rem;
+}
+.hero p.desc{max-width:640px;font-size:1.1rem;color:var(--text);margin-bottom:3rem}
+.hero .stats{display:flex;gap:3rem;flex-wrap:wrap;justify-content:center}
+.hero .stat{text-align:center}
+.hero .stat .num{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:700;color:var(--cyan)}
+.hero .stat .label{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em}
+
+.scroll-hint{
+  position:absolute;bottom:2rem;
+  animation:bob 2s ease-in-out infinite;
+  color:var(--text-dim);font-size:.85rem;
+  font-family:'IBM Plex Mono',monospace;
+}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+
+/* ── Group Headers ── */
+.group-header{
+  margin-bottom:3rem;padding:2rem 0 1rem;
+  border-bottom:1px solid var(--card-border);
+}
+.group-header h2{
+  font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:600;
+  color:var(--text-bright);margin-bottom:.4rem;
+}
+.group-header .group-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:.8rem;
+  text-transform:uppercase;letter-spacing:.12em;
+}
+
+/* ── Cards ── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:1.5rem;margin-bottom:2rem}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--card-border);
+  border-radius:16px;padding:1.8rem;
+  backdrop-filter:blur(12px);
+  transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease;
+  position:relative;overflow:hidden;
+  cursor:default;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  border-radius:16px 16px 0 0;
+  opacity:.8;transition:opacity .3s;
+}
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 40px rgba(0,0,0,.4);
+}
+.card:hover::before{opacity:1}
+
+/* accent colors per group */
+.card[data-accent="cyan"]::before{background:linear-gradient(90deg,var(--cyan),var(--teal))}
+.card[data-accent="cyan"]:hover{border-color:rgba(0,212,255,.25)}
+.card[data-accent="orange"]::before{background:linear-gradient(90deg,var(--orange),var(--gold))}
+.card[data-accent="orange"]:hover{border-color:rgba(255,107,53,.25)}
+.card[data-accent="purple"]::before{background:linear-gradient(90deg,var(--purple),var(--red))}
+.card[data-accent="purple"]:hover{border-color:rgba(155,114,207,.25)}
+
+.card .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+.card .card-num{
+  font-family:'Cormorant Garamond',serif;font-size:2.6rem;font-weight:700;
+  line-height:1;opacity:.15;
+}
+.card .badges{display:flex;gap:.5rem;flex-wrap:wrap}
+.badge{
+  font-family:'IBM Plex Mono',monospace;font-size:.65rem;
+  padding:.2rem .6rem;border-radius:100px;
+  text-transform:uppercase;letter-spacing:.06em;
+  border:1px solid;
+}
+.badge.llm{color:var(--gold);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08)}
+.badge.python{color:var(--green);border-color:rgba(0,232,122,.35);background:rgba(0,232,122,.08)}
+.badge.infra{color:var(--cyan);border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.08)}
+.badge.async{color:var(--teal);border-color:rgba(0,201,167,.35);background:rgba(0,201,167,.08)}
+
+.card h3{
+  font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;
+  color:var(--text-bright);margin-bottom:.25rem;
+}
+.card .file{
+  font-family:'IBM Plex Mono',monospace;font-size:.78rem;
+  color:var(--text-dim);margin-bottom:.8rem;
+}
+.card .file span{color:var(--cyan)}
+
+.card .desc{font-size:.92rem;margin-bottom:1.2rem;color:var(--text)}
+
+.card .methods{margin-bottom:1rem}
+.card .methods-label{
+  font-family:'IBM Plex Mono',monospace;font-size:.7rem;
+  color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;
+  margin-bottom:.4rem;
+}
+.method-list{display:flex;flex-wrap:wrap;gap:.35rem}
+.method-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:.72rem;
+  padding:.2rem .55rem;border-radius:6px;
+  background:rgba(255,255,255,.04);color:var(--text);
+  border:1px solid rgba(255,255,255,.06);
+}
+
+.card .detail{
+  font-size:.82rem;color:var(--text-dim);
+  border-top:1px solid rgba(255,255,255,.05);
+  padding-top:.8rem;line-height:1.6;
+}
+.card .detail strong{color:var(--text)}
+
+/* ── Diagram Section ── */
+.diagram-section{padding:5rem 0}
+.diagram-section h2{
+  font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:600;
+  color:var(--text-bright);text-align:center;margin-bottom:.5rem;
+}
+.diagram-section .diagram-sub{
+  text-align:center;font-family:'IBM Plex Mono',monospace;font-size:.85rem;
+  color:var(--text-dim);margin-bottom:3rem;
+}
+
+.diagram-wrap{
+  max-width:1000px;margin:0 auto;
+  background:var(--card);border:1px solid var(--card-border);
+  border-radius:20px;padding:3rem 2rem;
+  position:relative;overflow:hidden;
+}
+.diagram-wrap::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(0,212,255,.04),transparent 60%);
+  pointer-events:none;
+}
+
+/* SVG diagram */
+.diagram-svg{width:100%;height:auto;display:block}
+
+/* ── Nav dots ── */
+.side-nav{
+  position:fixed;right:1.5rem;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:.8rem;z-index:100;
+}
+.side-nav a{
+  width:10px;height:10px;border-radius:50%;
+  background:rgba(255,255,255,.15);
+  transition:all .3s;display:block;
+  border:1px solid transparent;
+}
+.side-nav a:hover,.side-nav a.active{
+  background:var(--cyan);border-color:var(--cyan);
+  box-shadow:0 0 10px rgba(0,212,255,.4);
+  transform:scale(1.3);
+}
+
+/* ── Footer ── */
+footer{
+  text-align:center;padding:3rem 0;
+  font-family:'IBM Plex Mono',monospace;font-size:.75rem;
+  color:var(--text-dim);border-top:1px solid var(--card-border);
+}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .container{padding:0 1rem}
+  section{padding:3rem 0}
+  .card-grid{grid-template-columns:1fr}
+  .hero .stats{gap:1.5rem}
+  .side-nav{display:none}
+  .diagram-wrap{padding:1.5rem 1rem}
+}
+
+/* ── Scroll animations ── */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="orb"></div>
+  <div class="orb"></div>
+  <div class="orb"></div>
+</div>
+
+<nav class="side-nav" id="sideNav">
+  <a href="#hero" title="Top"></a>
+  <a href="#infra" title="Infrastructure"></a>
+  <a href="#pipeline" title="Pipeline Agents"></a>
+  <a href="#orchestration" title="Orchestration"></a>
+  <a href="#diagram" title="Diagram"></a>
+</nav>
+
+<!-- ════════════════════════════════════ HERO ════════════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="container">
+    <div class="subtitle">agents/ directory deep-dive</div>
+    <h1>Python Agent<br>Architecture</h1>
+    <p class="desc">Twelve modules power the Recruiter pipeline — from LLM-driven extraction and scoring to pure-Python deduplication and quality checks. This is how they connect.</p>
+    <div class="stats">
+      <div class="stat"><div class="num">12</div><div class="label">Modules</div></div>
+      <div class="stat"><div class="num">5</div><div class="label">LLM Agents</div></div>
+      <div class="stat"><div class="num">4</div><div class="label">Pure Python</div></div>
+      <div class="stat"><div class="num">3</div><div class="label">Infrastructure</div></div>
+    </div>
+  </div>
+  <div class="scroll-hint">scroll to explore</div>
+</section>
+
+<!-- ════════════════════════ GROUP 1 — CORE INFRASTRUCTURE ════════════════════════ -->
+<section id="infra">
+  <div class="container">
+    <div class="group-header reveal">
+      <div class="group-tag" style="color:var(--cyan)">Group 1 &mdash; Modules 01&ndash;04</div>
+      <h2>Core Infrastructure</h2>
+    </div>
+
+    <div class="card-grid">
+
+      <!-- 01 BaseAgent -->
+      <div class="card reveal" data-accent="cyan">
+        <div class="card-top">
+          <div class="card-num">01</div>
+          <div class="badges"><span class="badge infra">Abstract Base</span><span class="badge llm">LLM</span></div>
+        </div>
+        <h3>BaseAgent</h3>
+        <div class="file">agents/<span>base.py</span></div>
+        <div class="desc">Abstract foundation every LLM agent inherits. Provides a unified calling interface across Anthropic and OpenAI, lazy client initialization, and a robust JSON parser with balanced-bracket fallback when models return wrapped output.</div>
+        <div class="methods">
+          <div class="methods-label">Key Methods</div>
+          <div class="method-list">
+            <span class="method-tag">_call_llm()</span>
+            <span class="method-tag">_call_llm_with_tools()</span>
+            <span class="method-tag">_parse_json_response()</span>
+            <span class="method-tag">_init_client()</span>
+          </div>
+        </div>
+        <div class="detail"><strong>_call_llm()</strong> works with both Anthropic and OpenAI. <strong>_call_llm_with_tools()</strong> is Anthropic-only and raises ValueError otherwise. JSON parsing uses balanced-bracket extraction as a resilient fallback.</div>
+      </div>
+
+      <!-- 02 EventBus -->
+      <div class="card reveal" data-accent="cyan">
+        <div class="card-top">
+          <div class="card-num">02</div>
+          <div class="badges"><span class="badge infra">Infrastructure</span><span class="badge async">Async</span></div>
+        </div>
+        <h3>EventBus</h3>
+        <div class="file">agents/<span>event_bus.py</span></div>
+        <div class="desc">Per-request async SSE streaming backbone. Wraps an asyncio.Queue with configurable backpressure (max 1000 items) to prevent unbounded memory growth. Each SSE request gets a fresh EventBus, discarded on completion.</div>
+        <div class="methods">
+          <div class="methods-label">Key Methods</div>
+          <div class="method-list">
+            <span class="method-tag">emit()</span>
+            <span class="method-tag">close()</span>
+            <span class="method-tag">stream()</span>
+          </div>
+        </div>
+        <div class="detail">Events are formatted as <strong>data: &lt;json&gt;\n\n</strong> for SSE protocol compliance. The stream() async generator yields until a sentinel close signal. Created fresh per request to isolate concurrent users.</div>
+      </div>
+
+      <!-- 03 HITLStore -->
+      <div class="card reveal" data-accent="cyan">
+        <div class="card-top">
+          <div class="card-num">03</div>
+          <div class="badges"><span class="badge infra">Infrastructure</span><span class="badge python">Pure Python</span></div>
+        </div>
+        <h3>HITLStore</h3>
+        <div class="file">agents/<span>hitl.py</span></div>
+        <div class="desc">Human-in-the-Loop checkpoint system. Each checkpoint wraps an asyncio.Event for non-blocking wait/resume. The store is an in-memory singleton dict keyed by run_id, with a 300-second auto-proceed timeout.</div>
+        <div class="methods">
+          <div class="methods-label">Key Classes &amp; Methods</div>
+          <div class="method-list">
+            <span class="method-tag">HITLCheckpoint</span>
+            <span class="method-tag">HITLStore</span>
+            <span class="method-tag">wait()</span>
+            <span class="method-tag">resume()</span>
+          </div>
+        </div>
+        <div class="detail"><strong>HITLCheckpoint</strong> uses asyncio.Event for blocking/unblocking coroutines. The module-level singleton is single-process only &mdash; swap to Redis for multi-instance deployments. <strong>300s timeout</strong> auto-proceeds with defaults.</div>
+      </div>
+
+      <!-- 04 Tool Schemas -->
+      <div class="card reveal" data-accent="cyan">
+        <div class="card-top">
+          <div class="card-num">04</div>
+          <div class="badges"><span class="badge infra">Schemas</span><span class="badge llm">Anthropic</span></div>
+        </div>
+        <h3>Tool Schemas</h3>
+        <div class="file">agents/<span>tools.py</span></div>
+        <div class="desc">Anthropic tool_use JSON schema definitions consumed by the OrchestratorAgent's ReAct loop. Two schema sets cover sourcing and resume-matching workflows with shared and unique tools.</div>
+        <div class="methods">
+          <div class="methods-label">Sourcing Tools (5)</div>
+          <div class="method-list">
+            <span class="method-tag">extract_jd</span>
+            <span class="method-tag">generate_queries</span>
+            <span class="method-tag">fetch_profiles</span>
+            <span class="method-tag">score_candidates</span>
+            <span class="method-tag">assess_quality</span>
+          </div>
+        </div>
+        <div class="methods" style="margin-top:.6rem">
+          <div class="methods-label">Resume Tools (5)</div>
+          <div class="method-list">
+            <span class="method-tag">extract_jd</span>
+            <span class="method-tag">parse_resumes</span>
+            <span class="method-tag">score_candidates</span>
+            <span class="method-tag">relax_requirements</span>
+            <span class="method-tag">assess_quality</span>
+          </div>
+        </div>
+        <div class="detail">Includes strategy enums for <strong>query generation</strong> (targeted, broad, location_relaxed) and <strong>requirement relaxation</strong> (reduce_must_have, expand_nice_to_have, relax_seniority).</div>
+      </div>
+
+    </div><!-- /card-grid -->
+  </div>
+</section>
+
+<!-- ════════════════════════ GROUP 2 — PIPELINE AGENTS ════════════════════════ -->
+<section id="pipeline">
+  <div class="container">
+    <div class="group-header reveal">
+      <div class="group-tag" style="color:var(--orange)">Group 2 &mdash; Modules 05&ndash;09</div>
+      <h2>Pipeline Agents</h2>
+    </div>
+
+    <div class="card-grid">
+
+      <!-- 05 JDExtractionAgent -->
+      <div class="card reveal" data-accent="orange">
+        <div class="card-top">
+          <div class="card-num">05</div>
+          <div class="badges"><span class="badge llm">LLM-Powered</span></div>
+        </div>
+        <h3>JDExtractionAgent</h3>
+        <div class="file">agents/<span>jd_extraction.py</span></div>
+        <div class="desc">Transforms raw job descriptions into a typed SearchSpec through a multi-step LLM pipeline. Handles vague or poorly-written JDs by scoring quality, rewriting prose, and inferring missing skills from role knowledge.</div>
+        <div class="methods">
+          <div class="methods-label">3-Step Pipeline</div>
+          <div class="method-list">
+            <span class="method-tag">Step 1: JD Cleaner</span>
+            <span class="method-tag">Step 2: Gap Filler</span>
+            <span class="method-tag">Step 3: Extractor</span>
+          </div>
+        </div>
+        <div class="detail"><strong>Step 1</strong> scores quality 0&ndash;10, lists issues, rewrites into clean prose. <strong>Step 2</strong> applies role knowledge to infer missing skills. Output is a typed <strong>SearchSpec</strong>. Five mock variants: Python, Data, Frontend, ML, DevOps. Falls back to mock on any failure.</div>
+      </div>
+
+      <!-- 06 QueryGenerationAgent -->
+      <div class="card reveal" data-accent="orange">
+        <div class="card-top">
+          <div class="card-num">06</div>
+          <div class="badges"><span class="badge llm">LLM-Powered</span></div>
+        </div>
+        <h3>QueryGenerationAgent</h3>
+        <div class="file">agents/<span>query_generation.py</span></div>
+        <div class="desc">Converts a SearchSpec into Boolean search queries tailored to each integration source. Generates primary and fallback queries with AND/OR syntax for maximum recall.</div>
+        <div class="methods">
+          <div class="methods-label">Key Methods</div>
+          <div class="method-list">
+            <span class="method-tag">generate()</span>
+            <span class="method-tag">_build_mock_queries()</span>
+            <span class="method-tag">_live_generate()</span>
+          </div>
+        </div>
+        <div class="detail">Targets 3 sources: <strong>google_cse</strong>, <strong>naukri</strong>, <strong>pdl</strong>. Produces <strong>3 primary + 2 fallback</strong> queries per source. Live mode uses a single LLM call. Mock mode constructs queries directly from SearchSpec fields.</div>
+      </div>
+
+      <!-- 07 ProfileFetchingAgent -->
+      <div class="card reveal" data-accent="orange">
+        <div class="card-top">
+          <div class="card-num">07</div>
+          <div class="badges"><span class="badge python">Pure Python</span><span class="badge async">Async</span></div>
+        </div>
+        <h3>ProfileFetchingAgent</h3>
+        <div class="file">agents/<span>profile_fetching.py</span></div>
+        <div class="desc">Dispatches queries to all configured integrations in parallel using asyncio.gather. No LLM involvement &mdash; purely async orchestration with graceful per-source failure handling.</div>
+        <div class="methods">
+          <div class="methods-label">Key Methods</div>
+          <div class="method-list">
+            <span class="method-tag">fetch()</span>
+            <span class="method-tag">_fetch_source()</span>
+            <span class="method-tag">_merge_results()</span>
+          </div>
+        </div>
+        <div class="detail">Uses <strong>asyncio.gather</strong> for parallel dispatch to Google CSE, Naukri, and PDL. Each source fails independently without crashing others. Returns <strong>(profiles[], source_availability)</strong> tuple.</div>
+      </div>
+
+      <!-- 08 ResumeParserAgent -->
+      <div class="card reveal" data-accent="orange">
+        <div class="card-top">
+          <div class="card-num">08</div>
+          <div class="badges"><span class="badge llm">LLM-Powered</span></div>
+        </div>
+        <h3>ResumeParserAgent</h3>
+        <div class="file">agents/<span>resume_parser.py</span></div>
+        <div class="desc">Extracts structured RawProfile objects from uploaded PDF and text resumes using LLM extraction. Standardizes skill names and supports batch processing for multiple uploads.</div>
+        <div class="methods">
+          <div class="methods-label">Key Methods</div>
+          <div class="method-list">
+            <span class="method-tag">parse()</span>
+            <span class="method-tag">parse_batch()</span>
+            <span class="method-tag">_extract_structured()</span>
+          </div>
+        </div>
+        <div class="detail">Source field is set to <strong>"resume_upload"</strong>. Five mock variants with realistic Indian tech professional data. Used by <strong>ResumeMatchPipeline</strong> to bypass query generation and external fetching entirely.</div>
+      </div>
+
+      <!-- 09 RankingAgent -->
+      <div class="card reveal" data-accent="orange">
+        <div class="card-top">
+          <div class="card-num">09</div>
+          <div class="badges"><span class="badge llm">LLM-Powered</span></div>
+        </div>
+        <h3>RankingAgent</h3>
+        <div class="file">agents/<span>ranking.py</span></div>
+        <div class="desc">Scores and buckets candidates using a weighted formula across four dimensions. Combines deterministic scoring with LLM-generated natural language reasoning for recruiter-facing explanations.</div>
+        <div class="methods">
+          <div class="methods-label">Scoring Formula</div>
+          <div class="method-list">
+            <span class="method-tag">50% must-have</span>
+            <span class="method-tag">25% nice-have</span>
+            <span class="method-tag">15% seniority</span>
+            <span class="method-tag">10% location</span>
+          </div>
+        </div>
+        <div class="detail"><strong>Must-have gate:</strong> missing &gt;1 must-have skill results in auto-rejection regardless of total score. Seniority detection uses title patterns (jr/mid/sr/lead/principal). Batch LLM call generates NL reasoning. Mock mode uses score-aware templates.</div>
+      </div>
+
+    </div><!-- /card-grid -->
+  </div>
+</section>
+
+<!-- ════════════════════════ GROUP 3 — ORCHESTRATION & DECISIONS ════════════════════════ -->
+<section id="orchestration">
+  <div class="container">
+    <div class="group-header reveal">
+      <div class="group-tag" style="color:var(--purple)">Group 3 &mdash; Modules 10&ndash;12</div>
+      <h2>Orchestration &amp; Decision Logic</h2>
+    </div>
+
+    <div class="card-grid">
+
+      <!-- 10 OrchestratorAgent -->
+      <div class="card reveal" data-accent="purple">
+        <div class="card-top">
+          <div class="card-num">10</div>
+          <div class="badges"><span class="badge llm">LLM-Powered</span><span class="badge async">Async</span></div>
+        </div>
+        <h3>OrchestratorAgent</h3>
+        <div class="file">agents/<span>orchestrator.py</span></div>
+        <div class="desc">Central pipeline driver coordinating all agents. Supports two modes (sourcing and resume matching) with a unified agentic ReAct loop. Maintains strict per-run state isolation via _RunContext.</div>
+        <div class="methods">
+          <div class="methods-label">Key Methods &amp; Classes</div>
+          <div class="method-list">
+            <span class="method-tag">_RunContext</span>
+            <span class="method-tag">_agentic_run()</span>
+            <span class="method-tag">_mock_run()</span>
+            <span class="method-tag">_dispatch_tool()</span>
+            <span class="method-tag">_assemble_output()</span>
+          </div>
+        </div>
+        <div class="detail"><strong>_RunContext</strong> dataclass isolates per-run mutable state (search spec, profiles, scores, trace). Mock mode uses a state machine (steps 0&ndash;6). HITL integration at <strong>jd_review</strong> and <strong>profile_count</strong> checkpoints. Force-accept promotion in output assembly.</div>
+      </div>
+
+      <!-- 11 QualityChecker -->
+      <div class="card reveal" data-accent="purple">
+        <div class="card-top">
+          <div class="card-num">11</div>
+          <div class="badges"><span class="badge python">Pure Python</span></div>
+        </div>
+        <h3>QualityChecker</h3>
+        <div class="file">agents/<span>quality_checker.py</span></div>
+        <div class="desc">Pure Python decision engine with no LLM dependency. Evaluates pipeline quality after each iteration and determines whether to accept results, force-accept, or refine the search strategy.</div>
+        <div class="methods">
+          <div class="methods-label">Key Methods</div>
+          <div class="method-list">
+            <span class="method-tag">assess()</span>
+            <span class="method-tag">_check_thresholds()</span>
+          </div>
+        </div>
+        <div class="detail">
+          <strong>Decision tree:</strong><br>
+          &bull; max_iterations reached &rarr; accept (or force_accept if 0 accepted)<br>
+          &bull; accepted &ge; min_accepted &rarr; accept<br>
+          &bull; thin pool &rarr; refine_broader<br>
+          &bull; high close:accept ratio &rarr; refine_location_relaxed<br>
+          &bull; default &rarr; refine_broader<br>
+          All thresholds are env-configurable.
+        </div>
+      </div>
+
+      <!-- 12 DeduplicationStage -->
+      <div class="card reveal" data-accent="purple">
+        <div class="card-top">
+          <div class="card-num">12</div>
+          <div class="badges"><span class="badge python">Pure Python</span></div>
+        </div>
+        <h3>DeduplicationStage</h3>
+        <div class="file">agents/<span>deduplication.py</span></div>
+        <div class="desc">Identity resolution engine using a 4-priority rule system to cluster duplicate profiles from different sources. Merges data, tracks provenance, and records field-level diffs.</div>
+        <div class="methods">
+          <div class="methods-label">Dedup Rules (P1&ndash;P4)</div>
+          <div class="method-list">
+            <span class="method-tag">P1: Email</span>
+            <span class="method-tag">P2: Name+Company</span>
+            <span class="method-tag">P3: Name+Title+Location</span>
+            <span class="method-tag">P4: Phone</span>
+          </div>
+        </div>
+        <div class="detail"><strong>Name token overlap &ge;80%</strong> for fuzzy matching. Source priority: resume &gt; PDL &gt; Naukri &gt; CSE. Uses <strong>O(n&sup2;) clustering</strong>. Skills are unioned across duplicates. Alt profiles preserve source URLs and field diffs.</div>
+      </div>
+
+    </div><!-- /card-grid -->
+  </div>
+</section>
+
+<!-- ════════════════════════ RELATIONSHIP DIAGRAM ════════════════════════ -->
+<section class="diagram-section" id="diagram">
+  <div class="container">
+    <h2 class="reveal">Class Relationship Diagram</h2>
+    <p class="diagram-sub reveal">How the 12 modules connect in the pipeline</p>
+
+    <div class="diagram-wrap reveal">
+      <svg class="diagram-svg" viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <!-- Defs -->
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6" fill="var(--cyan)" opacity=".6"/>
+          </marker>
+          <marker id="arrowOrange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6" fill="var(--orange)" opacity=".6"/>
+          </marker>
+          <marker id="arrowPurple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6" fill="var(--purple)" opacity=".6"/>
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Background grid -->
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,.02)" stroke-width=".5"/>
+        </pattern>
+        <rect width="960" height="620" fill="url(#grid)"/>
+
+        <!-- ── Infrastructure boxes (left) ── -->
+        <rect x="30" y="200" width="150" height="50" rx="10" fill="rgba(0,212,255,.08)" stroke="var(--cyan)" stroke-width="1" opacity=".8"/>
+        <text x="105" y="230" text-anchor="middle" fill="var(--cyan)" font-family="IBM Plex Mono" font-size="12" font-weight="600">EventBus</text>
+
+        <rect x="30" y="280" width="150" height="50" rx="10" fill="rgba(0,212,255,.08)" stroke="var(--cyan)" stroke-width="1" opacity=".8"/>
+        <text x="105" y="310" text-anchor="middle" fill="var(--cyan)" font-family="IBM Plex Mono" font-size="12" font-weight="600">HITLStore</text>
+
+        <rect x="30" y="360" width="150" height="50" rx="10" fill="rgba(0,212,255,.08)" stroke="var(--cyan)" stroke-width="1" opacity=".8"/>
+        <text x="105" y="390" text-anchor="middle" fill="var(--cyan)" font-family="IBM Plex Mono" font-size="12" font-weight="600">Tool Schemas</text>
+
+        <!-- ── BaseAgent (top center) ── -->
+        <rect x="370" y="30" width="220" height="55" rx="12" fill="rgba(0,212,255,.1)" stroke="var(--cyan)" stroke-width="1.5" filter="url(#glow)"/>
+        <text x="480" y="52" text-anchor="middle" fill="var(--text-bright)" font-family="IBM Plex Mono" font-size="13" font-weight="600">BaseAgent</text>
+        <text x="480" y="72" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">abstract base &middot; base.py</text>
+
+        <!-- ── Orchestrator (center) ── -->
+        <rect x="355" y="170" width="250" height="60" rx="14" fill="rgba(155,114,207,.12)" stroke="var(--purple)" stroke-width="2" filter="url(#glow)"/>
+        <text x="480" y="196" text-anchor="middle" fill="var(--text-bright)" font-family="IBM Plex Mono" font-size="14" font-weight="600">OrchestratorAgent</text>
+        <text x="480" y="216" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">orchestrator.py &middot; central driver</text>
+
+        <!-- Inheritance: Orchestrator -> BaseAgent -->
+        <line x1="480" y1="170" x2="480" y2="85" stroke="var(--cyan)" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow)"/>
+        <text x="492" y="132" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">inherits</text>
+
+        <!-- ── Pipeline Agents (below orchestrator) ── -->
+        <!-- JDExtraction -->
+        <rect x="220" y="310" width="155" height="48" rx="10" fill="rgba(255,107,53,.08)" stroke="var(--orange)" stroke-width="1" opacity=".9"/>
+        <text x="297" y="330" text-anchor="middle" fill="var(--orange)" font-family="IBM Plex Mono" font-size="11" font-weight="600">JDExtraction</text>
+        <text x="297" y="347" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">LLM &middot; jd_extraction.py</text>
+
+        <!-- QueryGeneration -->
+        <rect x="400" y="310" width="160" height="48" rx="10" fill="rgba(255,107,53,.08)" stroke="var(--orange)" stroke-width="1" opacity=".9"/>
+        <text x="480" y="330" text-anchor="middle" fill="var(--orange)" font-family="IBM Plex Mono" font-size="11" font-weight="600">QueryGeneration</text>
+        <text x="480" y="347" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">LLM &middot; query_generation.py</text>
+
+        <!-- ProfileFetching -->
+        <rect x="585" y="310" width="155" height="48" rx="10" fill="rgba(0,232,122,.08)" stroke="var(--green)" stroke-width="1" opacity=".9"/>
+        <text x="662" y="330" text-anchor="middle" fill="var(--green)" font-family="IBM Plex Mono" font-size="11" font-weight="600">ProfileFetching</text>
+        <text x="662" y="347" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">async &middot; profile_fetching.py</text>
+
+        <!-- ResumeParser -->
+        <rect x="260" y="390" width="155" height="48" rx="10" fill="rgba(255,107,53,.08)" stroke="var(--orange)" stroke-width="1" opacity=".9"/>
+        <text x="337" y="410" text-anchor="middle" fill="var(--orange)" font-family="IBM Plex Mono" font-size="11" font-weight="600">ResumeParser</text>
+        <text x="337" y="427" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">LLM &middot; resume_parser.py</text>
+
+        <!-- Ranking -->
+        <rect x="440" y="390" width="135" height="48" rx="10" fill="rgba(255,107,53,.08)" stroke="var(--orange)" stroke-width="1" opacity=".9"/>
+        <text x="507" y="410" text-anchor="middle" fill="var(--orange)" font-family="IBM Plex Mono" font-size="11" font-weight="600">Ranking</text>
+        <text x="507" y="427" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">LLM &middot; ranking.py</text>
+
+        <!-- Deduplication -->
+        <rect x="600" y="390" width="155" height="48" rx="10" fill="rgba(0,232,122,.08)" stroke="var(--green)" stroke-width="1" opacity=".9"/>
+        <text x="677" y="410" text-anchor="middle" fill="var(--green)" font-family="IBM Plex Mono" font-size="11" font-weight="600">Deduplication</text>
+        <text x="677" y="427" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">pure python &middot; deduplication.py</text>
+
+        <!-- QualityChecker (right of orchestrator) -->
+        <rect x="780" y="178" width="150" height="46" rx="10" fill="rgba(0,232,122,.08)" stroke="var(--green)" stroke-width="1" opacity=".9"/>
+        <text x="855" y="198" text-anchor="middle" fill="var(--green)" font-family="IBM Plex Mono" font-size="11" font-weight="600">QualityChecker</text>
+        <text x="855" y="213" text-anchor="middle" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="9">pure python</text>
+
+        <!-- ── Connection lines ── -->
+        <!-- Orchestrator uses Infrastructure -->
+        <line x1="355" y1="210" x2="180" y2="225" stroke="var(--cyan)" stroke-width="1" opacity=".4" marker-end="url(#arrow)"/>
+        <line x1="355" y1="210" x2="180" y2="305" stroke="var(--cyan)" stroke-width="1" opacity=".4" marker-end="url(#arrow)"/>
+        <line x1="355" y1="210" x2="180" y2="385" stroke="var(--cyan)" stroke-width="1" opacity=".4" marker-end="url(#arrow)"/>
+        <text x="255" y="248" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="8" transform="rotate(-10,255,248)">uses</text>
+
+        <!-- Orchestrator uses QualityChecker -->
+        <line x1="605" y1="200" x2="780" y2="200" stroke="var(--purple)" stroke-width="1.2" opacity=".5" marker-end="url(#arrowPurple)"/>
+        <text x="693" y="193" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="8">uses</text>
+
+        <!-- Orchestrator orchestrates pipeline agents -->
+        <line x1="420" y1="230" x2="297" y2="310" stroke="var(--orange)" stroke-width="1.2" opacity=".45" marker-end="url(#arrowOrange)"/>
+        <line x1="480" y1="230" x2="480" y2="310" stroke="var(--orange)" stroke-width="1.2" opacity=".45" marker-end="url(#arrowOrange)"/>
+        <line x1="540" y1="230" x2="662" y2="310" stroke="var(--orange)" stroke-width="1.2" opacity=".45" marker-end="url(#arrowOrange)"/>
+        <line x1="430" y1="230" x2="337" y2="390" stroke="var(--orange)" stroke-width="1" opacity=".3" marker-end="url(#arrowOrange)"/>
+        <line x1="490" y1="230" x2="507" y2="390" stroke="var(--orange)" stroke-width="1" opacity=".3" marker-end="url(#arrowOrange)"/>
+        <line x1="550" y1="230" x2="677" y2="390" stroke="var(--orange)" stroke-width="1" opacity=".3" marker-end="url(#arrowOrange)"/>
+        <text x="413" y="270" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="8">orchestrates</text>
+
+        <!-- Inheritance lines: LLM agents -> BaseAgent -->
+        <line x1="297" y1="310" x2="400" y2="85" stroke="var(--cyan)" stroke-width=".8" stroke-dasharray="4,3" opacity=".3"/>
+        <line x1="480" y1="310" x2="480" y2="85" stroke="var(--cyan)" stroke-width=".8" stroke-dasharray="4,3" opacity=".15"/>
+        <line x1="337" y1="390" x2="430" y2="85" stroke="var(--cyan)" stroke-width=".8" stroke-dasharray="4,3" opacity=".25"/>
+        <line x1="507" y1="390" x2="500" y2="85" stroke="var(--cyan)" stroke-width=".8" stroke-dasharray="4,3" opacity=".25"/>
+
+        <!-- Legend -->
+        <rect x="30" y="510" width="900" height="90" rx="12" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+        <text x="60" y="540" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="11" font-weight="600">LEGEND</text>
+
+        <line x1="60" y1="560" x2="100" y2="560" stroke="var(--cyan)" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <text x="110" y="564" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">Inherits BaseAgent</text>
+
+        <line x1="280" y1="560" x2="320" y2="560" stroke="var(--orange)" stroke-width="1.5"/>
+        <text x="330" y="564" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">Orchestrates</text>
+
+        <line x1="480" y1="560" x2="520" y2="560" stroke="var(--cyan)" stroke-width="1" opacity=".5"/>
+        <text x="530" y="564" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">Uses (infrastructure)</text>
+
+        <line x1="710" y1="560" x2="750" y2="560" stroke="var(--purple)" stroke-width="1.5"/>
+        <text x="760" y="564" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">Uses (decision)</text>
+
+        <rect x="60" y="578" width="12" height="12" rx="3" fill="rgba(255,107,53,.08)" stroke="var(--orange)" stroke-width="1"/>
+        <text x="82" y="589" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">LLM-Powered</text>
+
+        <rect x="220" y="578" width="12" height="12" rx="3" fill="rgba(0,232,122,.08)" stroke="var(--green)" stroke-width="1"/>
+        <text x="242" y="589" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">Pure Python</text>
+
+        <rect x="380" y="578" width="12" height="12" rx="3" fill="rgba(0,212,255,.08)" stroke="var(--cyan)" stroke-width="1"/>
+        <text x="402" y="589" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">Infrastructure</text>
+
+        <rect x="540" y="578" width="12" height="12" rx="3" fill="rgba(155,114,207,.12)" stroke="var(--purple)" stroke-width="1.5"/>
+        <text x="562" y="589" fill="var(--text-dim)" font-family="IBM Plex Mono" font-size="10">Orchestrator (hub)</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    Recruiter Pipeline &mdash; Agent Architecture Documentation &mdash; 12 Modules &middot; 3 Groups &middot; 14 Files
+  </div>
+</footer>
+
+<script>
+// ── Scroll reveal ──
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+reveals.forEach(el => observer.observe(el));
+
+// ── Side nav active state ──
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.side-nav a');
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const active = document.querySelector(`.side-nav a[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => navObserver.observe(s));
+</script>
+</body>
+</html>

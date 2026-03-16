@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Sub-Agents — Recruiting Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #03070F;
+  --card: #0A1428;
+  --cyan: #00D4FF;
+  --orange: #FF6B35;
+  --green: #00E87A;
+  --gold: #FFD166;
+  --purple: #9B72CF;
+  --red: #FF4D6D;
+  --teal: #00C9A7;
+  --text: #E0E6F0;
+  --text-dim: #7B8BA3;
+  --border: rgba(255,255,255,0.06);
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --sans: 'DM Sans', system-ui, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  overflow-x: hidden;
+  font-size: 15px;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 3px; }
+
+/* Grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ambient glow */
+body::after {
+  content: '';
+  position: fixed;
+  top: -40%; left: -20%;
+  width: 140%; height: 140%;
+  background: radial-gradient(ellipse at 25% 15%, rgba(0,212,255,0.045) 0%, transparent 55%),
+              radial-gradient(ellipse at 75% 85%, rgba(155,114,207,0.035) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: rgba(0,212,255,0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--cyan);
+}
+
+/* ── HEADER ── */
+header {
+  text-align: center;
+  padding: 90px 0 50px;
+}
+
+header h1 {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+  background: linear-gradient(135deg, var(--cyan) 0%, #7BB8FF 40%, var(--purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+  line-height: 1.15;
+}
+
+header .subtitle {
+  font-family: var(--sans);
+  font-size: 1.05rem;
+  color: var(--text-dim);
+  max-width: 760px;
+  margin: 0 auto;
+  line-height: 1.75;
+}
+
+header .subtitle em {
+  font-style: normal;
+  color: var(--cyan);
+  font-weight: 500;
+}
+
+/* ── PIPELINE FLOW ── */
+.pipeline-flow {
+  margin: 40px 0 72px;
+  padding: 36px 32px;
+  background: linear-gradient(135deg, rgba(10,20,40,0.85), rgba(10,20,40,0.45));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  backdrop-filter: blur(16px);
+  overflow-x: auto;
+}
+
+.pipeline-flow h2 {
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  color: var(--cyan);
+  margin-bottom: 32px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.flow-track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 1050px;
+  padding: 8px 0;
+}
+
+.flow-file {
+  flex-shrink: 0;
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--cyan);
+  white-space: nowrap;
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: default;
+}
+.flow-file:hover {
+  background: rgba(0,212,255,0.12);
+  border-color: rgba(0,212,255,0.35);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 24px rgba(0,212,255,0.12);
+}
+
+.flow-arrow {
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  opacity: 0.45;
+}
+
+.flow-stage {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid;
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: default;
+}
+.flow-stage:hover { transform: translateY(-3px); }
+.flow-stage.s1 { color: var(--orange); border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.06); }
+.flow-stage.s1:hover { background: rgba(255,107,53,0.12); box-shadow: 0 6px 24px rgba(255,107,53,0.12); }
+.flow-stage.s2 { color: var(--gold); border-color: rgba(255,209,102,0.3); background: rgba(255,209,102,0.06); }
+.flow-stage.s2:hover { background: rgba(255,209,102,0.12); box-shadow: 0 6px 24px rgba(255,209,102,0.12); }
+.flow-stage.s3 { color: var(--green); border-color: rgba(0,232,122,0.3); background: rgba(0,232,122,0.06); }
+.flow-stage.s3:hover { background: rgba(0,232,122,0.12); box-shadow: 0 6px 24px rgba(0,232,122,0.12); }
+.flow-stage.s4 { color: var(--purple); border-color: rgba(155,114,207,0.3); background: rgba(155,114,207,0.06); }
+.flow-stage.s4:hover { background: rgba(155,114,207,0.12); box-shadow: 0 6px 24px rgba(155,114,207,0.12); }
+.flow-stage.s5 { color: var(--red); border-color: rgba(255,77,109,0.3); background: rgba(255,77,109,0.06); }
+.flow-stage.s5:hover { background: rgba(255,77,109,0.12); box-shadow: 0 6px 24px rgba(255,77,109,0.12); }
+
+/* ── AGENT CARDS ── */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(370px, 1fr));
+  gap: 28px;
+  margin-bottom: 72px;
+}
+
+.agent-card {
+  background: linear-gradient(155deg, var(--card) 0%, rgba(10,20,40,0.55) 100%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  backdrop-filter: blur(20px);
+  transition: all 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(36px);
+}
+
+/* Top accent line */
+.agent-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 20px 20px 0 0;
+  opacity: 0.65;
+  transition: opacity 0.4s;
+}
+.agent-card:hover::before { opacity: 1; }
+
+.agent-card:hover {
+  transform: translateY(-8px);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Intersection observer animation */
+.agent-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.agent-card.color-orange::before { background: linear-gradient(90deg, var(--orange), transparent 70%); }
+.agent-card.color-gold::before { background: linear-gradient(90deg, var(--gold), transparent 70%); }
+.agent-card.color-green::before { background: linear-gradient(90deg, var(--green), transparent 70%); }
+.agent-card.color-teal::before { background: linear-gradient(90deg, var(--teal), transparent 70%); }
+.agent-card.color-purple::before { background: linear-gradient(90deg, var(--purple), transparent 70%); }
+.agent-card.color-red::before { background: linear-gradient(90deg, var(--red), transparent 70%); }
+
+.agent-card.color-orange:hover { box-shadow: 0 24px 64px rgba(255,107,53,0.1), 0 0 0 1px rgba(255,107,53,0.08); }
+.agent-card.color-gold:hover { box-shadow: 0 24px 64px rgba(255,209,102,0.1), 0 0 0 1px rgba(255,209,102,0.08); }
+.agent-card.color-green:hover { box-shadow: 0 24px 64px rgba(0,232,122,0.1), 0 0 0 1px rgba(0,232,122,0.08); }
+.agent-card.color-teal:hover { box-shadow: 0 24px 64px rgba(0,201,167,0.1), 0 0 0 1px rgba(0,201,167,0.08); }
+.agent-card.color-purple:hover { box-shadow: 0 24px 64px rgba(155,114,207,0.1), 0 0 0 1px rgba(155,114,207,0.08); }
+.agent-card.color-red:hover { box-shadow: 0 24px 64px rgba(255,77,109,0.1), 0 0 0 1px rgba(255,77,109,0.08); }
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+
+.stage-badge {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 6px;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.stage-badge.orange { color: var(--orange); background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.22); }
+.stage-badge.gold { color: var(--gold); background: rgba(255,209,102,0.1); border: 1px solid rgba(255,209,102,0.22); }
+.stage-badge.green { color: var(--green); background: rgba(0,232,122,0.1); border: 1px solid rgba(0,232,122,0.22); }
+.stage-badge.teal { color: var(--teal); background: rgba(0,201,167,0.1); border: 1px solid rgba(0,201,167,0.22); }
+.stage-badge.purple { color: var(--purple); background: rgba(155,114,207,0.1); border: 1px solid rgba(155,114,207,0.22); }
+.stage-badge.red { color: var(--red); background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.22); }
+
+.card-title {
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.card-filename {
+  font-family: var(--mono);
+  font-size: 0.73rem;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.card-desc {
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+.card-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tool-tag {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.18);
+  color: var(--cyan);
+  transition: all 0.25s;
+}
+.tool-tag:hover {
+  background: rgba(0,212,255,0.14);
+  border-color: rgba(0,212,255,0.4);
+  transform: translateY(-1px);
+}
+
+/* Steps visualization */
+.steps-flow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.step-pill {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+  transition: all 0.25s;
+}
+.step-pill:hover { transform: translateY(-1px); }
+.step-arrow {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  opacity: 0.35;
+}
+
+.card-details {
+  list-style: none;
+  padding: 0;
+}
+
+.card-details li {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 8px;
+  font-size: 0.84rem;
+  color: var(--text-dim);
+  line-height: 1.65;
+}
+
+.card-details li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.card-details li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.color-orange .card-details li::before { background: var(--orange); }
+.color-gold .card-details li::before { background: var(--gold); }
+.color-green .card-details li::before { background: var(--green); }
+.color-teal .card-details li::before { background: var(--teal); }
+.color-purple .card-details li::before { background: var(--purple); }
+.color-red .card-details li::before { background: var(--red); }
+
+.io-block {
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.io-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+.io-label.input { color: var(--teal); }
+.io-label.output { color: var(--green); }
+
+.io-value {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* Formula block */
+.formula-block {
+  margin: 16px 0;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.9;
+}
+
+/* ── ORCHESTRATOR SECTION ── */
+.orchestrator {
+  margin: 0 0 80px;
+  padding: 40px;
+  background: linear-gradient(135deg, rgba(10,20,40,0.9), rgba(10,20,40,0.5));
+  border: 1px solid rgba(0,212,255,0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(30px);
+}
+.orchestrator.visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.orchestrator::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--green), var(--cyan));
+  background-size: 300% 100%;
+  animation: shimmer 4s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 300% 0; }
+  100% { background-position: -300% 0; }
+}
+
+.orchestrator h2 {
+  font-family: var(--serif);
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.orchestrator .orch-sub {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+}
+
+.orchestrator .orch-desc {
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.75;
+  margin-bottom: 28px;
+  max-width: 840px;
+}
+
+.hitl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.hitl-card {
+  padding: 24px;
+  border-radius: 14px;
+  border: 1px solid;
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.hitl-card:hover { transform: translateY(-4px); }
+
+.hitl-card.h1 {
+  border-color: rgba(255,107,53,0.2);
+  background: rgba(255,107,53,0.03);
+}
+.hitl-card.h1:hover { box-shadow: 0 12px 40px rgba(255,107,53,0.08); }
+.hitl-card.h2 {
+  border-color: rgba(255,209,102,0.2);
+  background: rgba(255,209,102,0.03);
+}
+.hitl-card.h2:hover { box-shadow: 0 12px 40px rgba(255,209,102,0.08); }
+.hitl-card.h3 {
+  border-color: rgba(155,114,207,0.2);
+  background: rgba(155,114,207,0.03);
+}
+.hitl-card.h3:hover { box-shadow: 0 12px 40px rgba(155,114,207,0.08); }
+
+.hitl-card h4 {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.hitl-card.h1 h4 { color: var(--orange); }
+.hitl-card.h2 h4 { color: var(--gold); }
+.hitl-card.h3 h4 { color: var(--purple); }
+
+.hitl-card p {
+  font-size: 0.84rem;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+
+.hitl-card .trigger {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  opacity: 0.65;
+  margin-top: 10px;
+  display: block;
+}
+
+.hitl-card .options {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.hitl-card .opt {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-dim);
+  transition: all 0.2s;
+}
+.hitl-card .opt:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+}
+
+/* ── FOOTER ── */
+footer {
+  text-align: center;
+  padding: 48px 0 64px;
+  border-top: 1px solid var(--border);
+}
+footer p {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.8;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 840px) {
+  .agents-grid { grid-template-columns: 1fr; }
+  .flow-track { min-width: 850px; }
+  header { padding: 56px 0 32px; }
+  .agent-card { padding: 24px; }
+  .orchestrator { padding: 28px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <h1>Claude Code Sub-Agents</h1>
+    <p class="subtitle">
+      These are <em>autonomous AI agents</em> that run as Claude Code subprocesses to power the
+      recruiting pipeline CLI. Each agent reads a JSON artifact, performs its specialized task,
+      and writes the next artifact in the chain &mdash; fully orchestrated with human-in-the-loop checkpoints.
+    </p>
+  </header>
+
+  <!-- PIPELINE FLOW -->
+  <div class="pipeline-flow">
+    <h2>Pipeline Data Flow</h2>
+    <div class="flow-track">
+      <div class="flow-file">00_input.json</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-stage s1">Stage 1: JD Extraction</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-file">01_search_spec.json</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-stage s2">Stage 2: Query Generation</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-file">02_query_set.json</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-stage s3">Stage 3a/3b: Profile Fetching</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-file">03_raw_profiles.json</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-stage s4">Stage 4: Deduplication</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-file">04_deduped_profiles.json</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-stage s5">Stage 5: Ranking</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-file">05_pipeline_output.json</div>
+    </div>
+  </div>
+
+  <!-- AGENT CARDS -->
+  <div class="agents-grid">
+
+    <!-- CARD 1: JD Extraction -->
+    <div class="agent-card color-orange">
+      <div class="card-header">
+        <div>
+          <div class="card-title">JD Extraction</div>
+          <div class="card-filename">.claude/agents/jd-extraction.md</div>
+        </div>
+        <span class="stage-badge orange">STAGE 1</span>
+      </div>
+
+      <div class="card-tools">
+        <span class="tool-tag">Read</span>
+        <span class="tool-tag">Write</span>
+      </div>
+
+      <p class="card-desc">
+        Reads the raw job description from <code>00_input.json</code>, applies a 3-step extraction process,
+        and produces a fully typed <code>SearchSpec</code> with skills, seniority, location, and quality scoring.
+      </p>
+
+      <div class="steps-flow">
+        <span class="step-pill" style="color:var(--orange);border-color:rgba(255,107,53,0.3);background:rgba(255,107,53,0.06);">1. Clean</span>
+        <span class="step-arrow">&rarr;</span>
+        <span class="step-pill" style="color:var(--orange);border-color:rgba(255,107,53,0.3);background:rgba(255,107,53,0.06);">2. Gap Fill</span>
+        <span class="step-arrow">&rarr;</span>
+        <span class="step-pill" style="color:var(--orange);border-color:rgba(255,107,53,0.3);background:rgba(255,107,53,0.06);">3. Extract</span>
+      </div>
+
+      <ul class="card-details">
+        <li>Rates JD quality 0&ndash;10 based on clarity, structure, and completeness</li>
+        <li>Infers skills via role knowledge &mdash; e.g. "Python Engineer" adds Docker, Git, CI/CD</li>
+        <li>Flags unrealistic combinations and missing sections as <code>gap_flags</code></li>
+        <li>Rewrites low-quality JDs into clean structured prose</li>
+        <li>Supports inline text or file path input (.txt, .md, .pdf, .json)</li>
+        <li>Outputs canonical role_title, seniority_level, must/nice/inferred skills</li>
+      </ul>
+
+      <div class="io-block">
+        <div class="io-label input">Reads</div>
+        <div class="io-value">00_input.json &mdash; raw_jd, jd_file_path, weights, thresholds</div>
+      </div>
+      <div class="io-block" style="margin-top:8px;">
+        <div class="io-label output">Writes</div>
+        <div class="io-value">01_search_spec.json &mdash; SearchSpec with must_have_skills, nice_to_have_skills, inferred_skills, quality score</div>
+      </div>
+    </div>
+
+    <!-- CARD 2: Query Generation -->
+    <div class="agent-card color-gold">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Query Generation</div>
+          <div class="card-filename">.claude/agents/query-generation.md</div>
+        </div>
+        <span class="stage-badge gold">STAGE 2</span>
+      </div>
+
+      <div class="card-tools">
+        <span class="tool-tag">Read</span>
+        <span class="tool-tag">Write</span>
+      </div>
+
+      <p class="card-desc">
+        Reads the search spec and generates Boolean search queries for 5 job boards via <code>site:</code> operators,
+        LinkedIn profiles via Google CSE, Naukri keyword API, and PDL field-based queries.
+      </p>
+
+      <ul class="card-details">
+        <li><strong>5 job boards</strong>: Naukri, Indeed, Shine, Foundit, TimesJobs &mdash; each with <code>site:</code> queries</li>
+        <li><strong>LinkedIn</strong>: <code>site:linkedin.com/in</code> Boolean queries via Google CSE</li>
+        <li><strong>Naukri API</strong>: keyword-style format with title + skills + location + experience range</li>
+        <li><strong>PDL</strong>: structured field expressions for <code>/person/search</code> API</li>
+        <li>3 primary + 2 fallback queries per source (25+ total queries)</li>
+        <li><code>mode=web</code> skips API-only sources; <code>mode=api</code> generates all four sections</li>
+      </ul>
+
+      <div class="io-block">
+        <div class="io-label input">Reads</div>
+        <div class="io-value">01_search_spec.json &mdash; role_title, skills, seniority, location</div>
+      </div>
+      <div class="io-block" style="margin-top:8px;">
+        <div class="io-label output">Writes</div>
+        <div class="io-value">02_query_set.json &mdash; job_boards{naukri,indeed,shine,foundit,timesjobs}, google_cse, naukri, pdl</div>
+      </div>
+    </div>
+
+    <!-- CARD 3: Profile Fetching - API -->
+    <div class="agent-card color-green">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Profile Fetching &mdash; API</div>
+          <div class="card-filename">.claude/agents/profile-fetching-api.md</div>
+        </div>
+        <span class="stage-badge green">STAGE 3a</span>
+      </div>
+
+      <div class="card-tools">
+        <span class="tool-tag">Read</span>
+        <span class="tool-tag">Write</span>
+        <span class="tool-tag">Bash</span>
+      </div>
+
+      <p class="card-desc">
+        Calls live APIs via <code>curl</code> &mdash; Google Custom Search v1, People Data Labs v5 Person Search,
+        and Naukri Resdex. Enforces strict evidence rules: every profile must originate from a real API response
+        received in this session.
+      </p>
+
+      <ul class="card-details">
+        <li><strong>Google CSE v1</strong>: <code>customsearch/v1</code> &mdash; extracts name, title, skills from title + snippet</li>
+        <li><strong>PDL v5</strong>: <code>/person/search</code> &mdash; full profiles with experience, education, linkedin_url</li>
+        <li><strong>Naukri Resdex</strong>: enterprise endpoint (requires contract credentials)</li>
+        <li><strong>Zero invented data</strong> &mdash; must print raw API response before extracting any profile</li>
+        <li>URL validation via <code>curl HEAD</code> checks: 200/301/302 kept, 404 nulled</li>
+        <li>Data quality tagging: <code>full_page</code> (PDL), <code>snippet_only</code> (CSE), <code>partial</code> (Naukri)</li>
+      </ul>
+
+      <div class="io-block">
+        <div class="io-label input">Reads</div>
+        <div class="io-value">02_query_set.json + .env (GOOGLE_CSE_KEY, PDL_KEY, NAUKRI_KEY)</div>
+      </div>
+      <div class="io-block" style="margin-top:8px;">
+        <div class="io-label output">Writes</div>
+        <div class="io-value">03_raw_profiles.json &mdash; RawProfile[] with source_availability map</div>
+      </div>
+    </div>
+
+    <!-- CARD 4: Profile Fetching - Web -->
+    <div class="agent-card color-teal">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Profile Fetching &mdash; Web</div>
+          <div class="card-filename">.claude/agents/profile-fetching-web.md</div>
+        </div>
+        <span class="stage-badge teal">STAGE 3b</span>
+      </div>
+
+      <div class="card-tools">
+        <span class="tool-tag">Read</span>
+        <span class="tool-tag">Write</span>
+        <span class="tool-tag">WebSearch</span>
+        <span class="tool-tag">WebFetch</span>
+      </div>
+
+      <p class="card-desc">
+        No API keys needed. Uses WebSearch to find candidates on job boards first (primary source), then LinkedIn.
+        Fetches the top 10 URLs with WebFetch and classifies each page as live, login_wall, partial, or dead.
+      </p>
+
+      <ul class="card-details">
+        <li><strong>Job boards first</strong>: Naukri and Indeed as primary; Shine/Foundit/TimesJobs as bonus if pool &lt; 6</li>
+        <li><strong>LinkedIn second</strong>: fallbacks triggered if primaries return &lt; 5 results</li>
+        <li>Fetches top 10 most promising URLs &mdash; job board URLs always prioritized</li>
+        <li>Classifies <code>url_status</code>: live (profile content visible), login_wall, partial, dead</li>
+        <li>Skips job listing URLs containing <code>/job/</code>, <code>/vacancy/</code>, <code>/apply/</code></li>
+        <li>Merges same-person results across boards; stores secondary URLs as <code>alt_urls</code></li>
+        <li>Auto-fallback: if primary[0] returns 0 results, tries fallback[0] immediately</li>
+      </ul>
+
+      <div class="io-block">
+        <div class="io-label input">Reads</div>
+        <div class="io-value">02_query_set.json &mdash; job_boards.{naukri,indeed} + google_cse queries</div>
+      </div>
+      <div class="io-block" style="margin-top:8px;">
+        <div class="io-label output">Writes</div>
+        <div class="io-value">03_raw_profiles.json &mdash; RawProfile[] with alt_urls, url_status, data_quality</div>
+      </div>
+    </div>
+
+    <!-- CARD 5: Deduplication -->
+    <div class="agent-card color-purple">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Candidate Deduplication</div>
+          <div class="card-filename">.claude/agents/candidate-deduplication.md</div>
+        </div>
+        <span class="stage-badge purple">STAGE 4</span>
+      </div>
+
+      <div class="card-tools">
+        <span class="tool-tag">Read</span>
+        <span class="tool-tag">Write</span>
+        <span class="tool-tag">Bash</span>
+      </div>
+
+      <p class="card-desc">
+        P1&ndash;P4 identity resolution across all sources. Writes Python scripts for deterministic matching,
+        merges duplicates with source-priority field selection, and preserves <code>alt_profiles</code> for URL recovery downstream.
+      </p>
+
+      <div class="steps-flow">
+        <span class="step-pill" style="color:var(--purple);border-color:rgba(155,114,207,0.3);background:rgba(155,114,207,0.06);">P1 Email</span>
+        <span class="step-arrow">&rarr;</span>
+        <span class="step-pill" style="color:var(--purple);border-color:rgba(155,114,207,0.3);background:rgba(155,114,207,0.06);">P2 Name+Company</span>
+        <span class="step-arrow">&rarr;</span>
+        <span class="step-pill" style="color:var(--purple);border-color:rgba(155,114,207,0.3);background:rgba(155,114,207,0.06);">P3 Name+Title+Loc</span>
+        <span class="step-arrow">&rarr;</span>
+        <span class="step-pill" style="color:var(--purple);border-color:rgba(155,114,207,0.3);background:rgba(155,114,207,0.06);">P4 Phone</span>
+      </div>
+
+      <ul class="card-details">
+        <li><strong>P1</strong>: Exact email match &mdash; definite duplicate, merge immediately</li>
+        <li><strong>P2</strong>: Name token overlap &ge;80% AND same/shared company (fuzzy containment match)</li>
+        <li><strong>P3</strong>: Name overlap &ge;80% AND same job title (fuzzy) AND same city</li>
+        <li><strong>P4</strong>: Same phone number &mdash; definite duplicate</li>
+        <li><strong>Source priority</strong>: resume_upload &gt; PDL &gt; Naukri &gt; Indeed &gt; Shine &gt; Foundit &gt; TimesJobs &gt; LinkedIn &gt; CSE</li>
+        <li><strong>URL priority</strong>: job board URL first &gt; PDL &gt; CSE/web_search</li>
+        <li>Writes and runs Python scripts (<code>dedup.py</code>) for deterministic matching on large sets</li>
+        <li>Name tokenization ignores middle initials (single-letter tokens like "K.", "A.")</li>
+      </ul>
+
+      <div class="io-block">
+        <div class="io-label input">Reads</div>
+        <div class="io-value">03_raw_profiles.json &mdash; RawProfile[] from all fetching sources</div>
+      </div>
+      <div class="io-block" style="margin-top:8px;">
+        <div class="io-label output">Writes</div>
+        <div class="io-value">04_deduped_profiles.json &mdash; DedupedProfile[] with dedup_rule (P1-P4/unique), alt_profiles</div>
+      </div>
+    </div>
+
+    <!-- CARD 6: Ranking -->
+    <div class="agent-card color-red">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Candidate Ranking</div>
+          <div class="card-filename">.claude/agents/candidate-ranking.md</div>
+        </div>
+        <span class="stage-badge red">STAGE 5</span>
+      </div>
+
+      <div class="card-tools">
+        <span class="tool-tag">Read</span>
+        <span class="tool-tag">Write</span>
+        <span class="tool-tag">WebFetch</span>
+        <span class="tool-tag">Bash</span>
+      </div>
+
+      <p class="card-desc">
+        Scores every candidate against the SearchSpec using a weighted formula with a must-have gate.
+        Verifies all URLs via WebFetch with alt_profile recovery, and writes personalized reasoning per candidate.
+      </p>
+
+      <div class="formula-block" style="color:var(--red);border-color:rgba(255,77,109,0.18);background:rgba(255,77,109,0.04);">
+        score = <span style="color:var(--text)">0.50</span> &times; must_have_pct
+        + <span style="color:var(--text)">0.25</span> &times; nice_have_pct
+        + <span style="color:var(--text)">0.15</span> &times; seniority_proximity
+        + <span style="color:var(--text)">0.10</span> &times; location_match
+      </div>
+
+      <ul class="card-details">
+        <li><strong>Must-have gate</strong>: missing &gt;1 must-have skill &rarr; auto-rejected regardless of score</li>
+        <li><strong>Seniority proximity</strong>: 1.0 exact match, 0.5 one level off, 0.0 two+ levels off</li>
+        <li><strong>Location match</strong>: 1.0 match, 0.8 remote, 0.5 unknown, 0.0 mismatch</li>
+        <li>URL verification via WebFetch &mdash; trusts existing url_status from Stage 3/4, only re-checks unknowns</li>
+        <li>Dead URLs trigger <code>alt_profiles</code> recovery (tries each alt URL in sequence)</li>
+        <li>Profiles with no reachable URL excluded from accepted/close buckets</li>
+        <li>Personalized 3&ndash;5 sentence reasoning per candidate (real data only, no templates)</li>
+        <li>Buckets: accepted (&ge;70% + all must-haves), close (&ge;50%), rejected</li>
+        <li>Writes and runs Python scoring scripts (<code>score.py</code>) for consistent arithmetic</li>
+      </ul>
+
+      <div class="io-block">
+        <div class="io-label input">Reads</div>
+        <div class="io-value">04_deduped_profiles.json + 01_search_spec.json + 00_input.json (thresholds)</div>
+      </div>
+      <div class="io-block" style="margin-top:8px;">
+        <div class="io-label output">Writes</div>
+        <div class="io-value">05_pipeline_output.json &mdash; accepted[], close[], rejected_count, execution_trace</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ORCHESTRATOR / run-pipeline -->
+  <div class="orchestrator">
+    <h2>run-pipeline Command</h2>
+    <p class="orch-sub">.claude/commands/run-pipeline.md &mdash; Orchestrates all 6 sub-agents with 3 human-in-the-loop checkpoints</p>
+
+    <p class="orch-desc">
+      The <code>/run-pipeline</code> slash command is the top-level orchestrator. It collects the job description
+      interactively, initializes a run directory at <code>/tmp/recruiting-pipeline/&lt;run_id&gt;/</code>, determines
+      fetch mode (API vs Web) from <code>.env</code> keys, and invokes each sub-agent in sequence. Between stages,
+      it pauses at three HITL checkpoints where the recruiter can review, edit, or redirect the pipeline.
+      Each stage is timed and the final output is rendered as a formatted shortlist with candidate profiles, scores, and reasoning.
+    </p>
+
+    <div class="hitl-grid">
+      <div class="hitl-card h1">
+        <h4>HITL-1 &mdash; JD Review</h4>
+        <p>After JD extraction, before search begins. Recruiter reviews the extracted SearchSpec &mdash; role title,
+           must-have skills, inferred skills, quality score. Context-aware prompting highlights issues
+           like low quality scores or missing fields.</p>
+        <span class="trigger">Trigger: always fires after Stage 1</span>
+        <div class="options">
+          <span class="opt">confirm</span>
+          <span class="opt">edit fields</span>
+          <span class="opt">abort</span>
+        </div>
+      </div>
+      <div class="hitl-card h2">
+        <h4>HITL-2 &mdash; Pool Size Check</h4>
+        <p>After deduplication, if candidate pool is below 2x requested count. Analyzes source availability
+           and dedup loss to recommend the best expansion strategy. Options are tailored to actual data
+           &mdash; e.g. "relax location" is hidden if spec is already "Remote".</p>
+        <span class="trigger">Trigger: deduped_count &lt; requested_count &times; 2</span>
+        <div class="options">
+          <span class="opt">broaden queries</span>
+          <span class="opt">relax location</span>
+          <span class="opt">proceed</span>
+          <span class="opt">abort</span>
+        </div>
+      </div>
+      <div class="hitl-card h3">
+        <h4>HITL-3 &mdash; Shortlist Size Check</h4>
+        <p>After ranking, if the shortlist is below requested count. Analyzes score distribution and
+           rejection reasons (must-have gate vs low score vs dead URLs) to suggest targeted fixes.
+           Options that would not help are automatically hidden.</p>
+        <span class="trigger">Trigger: accepted + close &lt; requested_count</span>
+        <div class="options">
+          <span class="opt">lower threshold &minus;10%</span>
+          <span class="opt">include close</span>
+          <span class="opt">proceed</span>
+          <span class="opt">abort</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>
+      Recruiting Pipeline &mdash; Claude Code Sub-Agents<br>
+      All pipeline data lives in <code>/tmp/recruiting-pipeline/&lt;run_id&gt;/</code>
+    </p>
+  </footer>
+
+</div>
+
+<script>
+// Intersection Observer for scroll-reveal animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+// Observe agent cards and orchestrator section
+document.querySelectorAll('.agent-card, .orchestrator').forEach(el => {
+  observer.observe(el);
+});
+
+// Stagger animation for agent cards
+document.querySelectorAll('.agent-card').forEach((card, i) => {
+  card.style.transitionDelay = `${i * 0.1}s`;
+});
+</script>
+
+</body>
+</html>
