@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Recruiter — How It Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f6f8;
+  --white: #ffffff;
+  --blue: #3b5bdb;
+  --blue-light: #e8edff;
+  --navy: #2b2d42;
+  --navy-deep: #1a1b2e;
+  --amber-light: #fff8e1;
+  --amber-border: #ffe082;
+  --green: #37b24d;
+  --green-light: #e6fcf5;
+  --purple: #7048e8;
+  --purple-light: #f3f0ff;
+  --text: #1a1b2e;
+  --text-mid: #495057;
+  --text-dim: #868e96;
+  --border: #dee2e6;
+  --shadow: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 3px 8px rgba(0,0,0,0.08);
+  --radius: 8px;
+  --font: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── LAYOUT SHELL ── */
+.shell {
+  height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 14px 28px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── HEADER ── */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.page-header h1 span { color: var(--blue); }
+
+.page-header p {
+  color: var(--text-mid);
+  font-size: 12px;
+  margin-top: 2px;
+  max-width: 580px;
+}
+
+.badge-explainer {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-mid);
+  background: var(--white);
+  white-space: nowrap;
+}
+
+/* ── TABS ── */
+.tabs-bar {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 8px;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  padding: 5px 16px;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  color: var(--text-mid);
+  transition: all 0.15s;
+}
+
+.tab-btn:hover { border-color: var(--blue); color: var(--blue); }
+.tab-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* ── PANELS ── */
+.tab-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  animation: fadeIn 0.25s ease;
+}
+
+.tab-panel.active { display: flex; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── PIPELINE BAR ── */
+.pipeline-bar {
+  background: var(--navy);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.pipeline-bar .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pipeline-bar .icon-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.pipeline-bar .title { font-weight: 600; font-size: 13px; color: #fff; }
+.pipeline-bar .subtitle { font-size: 10.5px; color: rgba(255,255,255,0.5); }
+
+.pipeline-bar .badges { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+
+.pipeline-bar .agent-badge {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.75);
+  white-space: nowrap;
+}
+
+/* ── FLOW AREA ── */
+.flow-area {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 18px 16px 12px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+}
+
+/* ── FLOW ROW ── */
+.flow-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+}
+
+.flow-row > * { flex-shrink: 0; }
+
+/* ── ARROWS ── */
+.arrow-h {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  min-width: 30px;
+}
+
+.arrow-h::after {
+  content: '';
+  width: 18px;
+  border-top: 1.5px dashed #ced4da;
+}
+
+.arrow-h svg { position: absolute; right: 1px; color: #adb5bd; }
+
+.arrow-down-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+}
+
+.arrow-down {
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid #adb5bd;
+}
+
+/* ── CARD ── */
+.card {
+  width: 162px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 10px 8px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.card .card-icon { font-size: 16px; margin-bottom: 4px; line-height: 1; }
+
+.card .stage-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 2px;
+}
+
+.card .card-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--text);
+  margin-bottom: 3px;
+  line-height: 1.2;
+}
+
+.card .card-desc {
+  font-size: 10.5px;
+  color: var(--text-mid);
+  line-height: 1.35;
+  flex: 1;
+}
+
+.card .card-agent {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 5px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.card .card-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+
+.card .tag {
+  font-size: 9.5px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+/* ── HITL CARD ── */
+.card-hitl {
+  width: 142px;
+  border: 1.5px solid var(--amber-border);
+  border-radius: var(--radius);
+  padding: 10px 10px 8px;
+  background: var(--amber-light);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-hitl .card-icon { font-size: 15px; margin-bottom: 4px; }
+
+.card-hitl .hitl-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #e67700;
+  margin-bottom: 2px;
+}
+
+.card-hitl .card-title {
+  font-weight: 700;
+  font-size: 11.5px;
+  color: var(--text);
+  margin-bottom: 3px;
+  line-height: 1.2;
+}
+
+.card-hitl .card-desc {
+  font-size: 10px;
+  color: #845a00;
+  line-height: 1.35;
+}
+
+/* ── FINAL REPORT ── */
+.card-final {
+  width: 162px;
+  border-radius: var(--radius);
+  padding: 10px 10px 8px;
+  background: var(--navy-deep);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-md);
+}
+
+.card-final .card-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.card-final .card-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+
+.card-final .report-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 2px;
+}
+
+.report-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green  { background: #51cf66; }
+.dot-yellow { background: #ffd43b; }
+.dot-red    { background: #ff6b6b; }
+
+/* ── FEEDBACK LOOP ── */
+.feedback-loop {
+  text-align: center;
+  padding: 6px 0 2px;
+}
+
+.feedback-loop .loop-text {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--purple);
+  font-weight: 500;
+  display: inline-block;
+  padding: 0 8px;
+  background: var(--white);
+  position: relative;
+  z-index: 1;
+}
+
+.loop-line {
+  height: 20px;
+  position: relative;
+  margin: 0 40px;
+}
+
+.loop-line::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 100%;
+  border-left: 1.5px solid var(--purple);
+  border-right: 1.5px solid var(--purple);
+  border-bottom: 1.5px solid var(--purple);
+  border-radius: 0 0 8px 8px;
+  opacity: 0.3;
+}
+
+/* ── FOOTER BAR ── */
+.footer-bar {
+  margin-top: 6px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.footer-bar .footer-left { display: flex; align-items: center; gap: 8px; }
+
+.footer-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: var(--blue);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.footer-badge.green { background: var(--green); }
+
+.footer-text { font-size: 10.5px; color: var(--text-mid); }
+
+.footer-right-badge {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #f1f3f5;
+  color: var(--text-mid);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+/* ── VARIANT COLORS ── */
+.pipeline-bar.python { background: linear-gradient(135deg, #2b2d42, #3b3d5c); }
+.pipeline-bar.resume { background: linear-gradient(135deg, #1a472a, #2d5a3f); }
+
+.card .stage-label.green { color: var(--green); }
+.card .stage-label.purple { color: var(--purple); }
+.tag.green { background: var(--green-light); color: var(--green); }
+.tag.purple { background: var(--purple-light); color: var(--purple); }
+.tag.amber { background: var(--amber-light); color: #e67700; border: 1px solid var(--amber-border); }
+
+/* ── AUTO CHECKER CARD ── */
+.card-auto {
+  width: 142px;
+  border: 1.5px solid #b2f2bb;
+  border-radius: var(--radius);
+  padding: 10px 10px 8px;
+  background: #f0fff4;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-auto .auto-label {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.4px; text-transform: uppercase;
+  color: var(--green); margin-bottom: 2px;
+}
+
+.card-auto .card-title {
+  font-weight: 700; font-size: 11.5px;
+  color: var(--text); margin-bottom: 3px; line-height: 1.2;
+}
+
+.card-auto .card-desc { font-size: 10px; color: #2b8a3e; line-height: 1.35; }
+
+/* ── SKIP CARD ── */
+.card-skip {
+  width: 142px;
+  border: 1.5px dashed #ced4da;
+  border-radius: var(--radius);
+  padding: 10px;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0.55;
+}
+
+.card-skip .skip-label {
+  font-size: 9.5px; font-weight: 600;
+  color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px;
+}
+
+.card-skip .skip-text { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+/* ── COMPARISON / SCORING TABLES ── */
+.info-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.info-box {
+  flex: 1;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  border: 1px solid;
+}
+
+.info-box.purple-box { background: var(--purple-light); border-color: #d0bfff; }
+.info-box.green-box  { background: #f0fff4; border-color: #b2f2bb; }
+
+.info-box h4 {
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.info-box h4.purple { color: var(--purple); }
+.info-box h4.green { color: #2b8a3e; }
+
+.info-box table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.info-box th {
+  text-align: left;
+  padding: 2px 6px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.info-box td {
+  padding: 2px 6px;
+  color: var(--text-mid);
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- HEADER -->
+<div class="page-header">
+  <div>
+    <h1>AI <span>Recruiter</span> — How It Works</h1>
+    <p>Three ways to source and evaluate candidates — two implementation approaches for online sourcing, plus a dedicated resume matching pipeline.</p>
+  </div>
+  <div class="badge-explainer">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Visual Explainer
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" data-tab="tab1">Claude Code Sub-Agents</button>
+  <button class="tab-btn" data-tab="tab2">Python Agentic Pipeline</button>
+  <button class="tab-btn" data-tab="tab3">Resume Upload &amp; Match</button>
+</div>
+
+<!-- ═══════════════════════════════ TAB 1 ═══════════════════════════════ -->
+<div class="tab-panel active" id="tab1">
+
+  <div class="pipeline-bar">
+    <div class="left">
+      <div class="icon-circle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div>
+        <div class="title">run-pipeline (Claude Code Command)</div>
+        <div class="subtitle">Sequences 5 stages as native sub-agents · file-based · 3 HITL checkpoints</div>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="agent-badge">jd-extraction</span>
+      <span class="agent-badge">query-generation</span>
+      <span class="agent-badge">profile-fetching</span>
+      <span class="agent-badge">deduplication</span>
+      <span class="agent-badge">ranking</span>
+    </div>
+  </div>
+
+  <div class="flow-area">
+    <!-- ROW 1 -->
+    <div class="flow-row">
+      <div class="card">
+        <div class="card-icon">&#9998;</div>
+        <div class="stage-label">Stage 1</div>
+        <div class="card-title">JD Extraction</div>
+        <div class="card-desc">Reads raw JD, cleans it, fills skill gaps, extracts structured search spec.</div>
+        <div class="card-agent">jd-extraction agent</div>
+        <div class="card-tags">
+          <span class="tag">Clean</span>
+          <span class="tag">Gap Fill</span>
+          <span class="tag">Extract</span>
+        </div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-hitl">
+        <div class="card-icon">&#9995;</div>
+        <div class="hitl-label">HITL-1</div>
+        <div class="card-title">Recruiter reviews extracted spec</div>
+        <div class="card-desc">Edit skills, title, location before search</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#128269;</div>
+        <div class="stage-label">Stage 2</div>
+        <div class="card-title">Query Generation</div>
+        <div class="card-desc">Builds Boolean search queries per platform syntax.</div>
+        <div class="card-agent">query-generation agent</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#127760;</div>
+        <div class="stage-label">Stage 3</div>
+        <div class="card-title">Profile Fetching</div>
+        <div class="card-desc">Searches all platforms in parallel via API keys or web search fallback.</div>
+        <div class="card-agent">profile-fetching-api / web agent</div>
+        <div class="card-tags">
+          <span class="tag">Google CSE</span>
+          <span class="tag">Naukri</span>
+          <span class="tag">PDL</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down-wrapper"><div class="arrow-down"></div></div>
+
+    <!-- ROW 2 -->
+    <div class="flow-row">
+      <div class="card">
+        <div class="card-icon">&#128279;</div>
+        <div class="stage-label">Stage 4</div>
+        <div class="card-title">Deduplication</div>
+        <div class="card-desc">Merges same person from multiple sources. P1&ndash;P4 identity resolution.</div>
+        <div class="card-agent">candidate-deduplication agent</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-hitl">
+        <div class="card-icon">&#9995;</div>
+        <div class="hitl-label">HITL-2</div>
+        <div class="card-title">Too few candidates?</div>
+        <div class="card-desc">Broaden search, relax location, or proceed</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#128202;</div>
+        <div class="stage-label">Stage 5</div>
+        <div class="card-title">Candidate Ranking</div>
+        <div class="card-desc">Weighted score + must-have gate. Buckets into accepted / close / rejected.</div>
+        <div class="card-agent">candidate-ranking agent</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-hitl">
+        <div class="card-icon">&#9995;</div>
+        <div class="hitl-label">HITL-3</div>
+        <div class="card-title">Shortlist too small?</div>
+        <div class="card-desc">Lower threshold, include close, or proceed</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-final">
+        <div class="card-icon">&#10003;</div>
+        <div class="card-title">Final Report</div>
+        <div class="report-item"><span class="report-dot dot-green"></span> Accepted (shortlist)</div>
+        <div class="report-item"><span class="report-dot dot-yellow"></span> Close (maybe)</div>
+        <div class="report-item"><span class="report-dot dot-red"></span> Rejected (dropped)</div>
+      </div>
+    </div>
+
+    <div class="feedback-loop">
+      <div class="loop-text">if not enough &rarr; loops back to Stage 2 with broader strategy</div>
+    </div>
+    <div class="loop-line"></div>
+  </div>
+
+  <div class="footer-bar">
+    <div class="footer-left">
+      <span class="footer-badge">File-Based Pipeline</span>
+      <span class="footer-text">Each sub-agent reads one JSON file, writes the next. Checks .env for API keys &mdash; routes to api-fetcher or web-fetcher accordingly.</span>
+    </div>
+    <span class="footer-right-badge">01_search_spec &rarr; 05_output</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ TAB 2 ═══════════════════════════════ -->
+<div class="tab-panel" id="tab2">
+
+  <div class="pipeline-bar python">
+    <div class="left">
+      <div class="icon-circle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <div class="title">AgenticPipeline (Python + Anthropic tool_use)</div>
+        <div class="subtitle">ReAct loop with LLM-driven tool calls &middot; in-memory &middot; 2 HITL checkpoints &middot; SSE streaming</div>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="agent-badge">extract_jd</span>
+      <span class="agent-badge">generate_queries</span>
+      <span class="agent-badge">fetch_profiles</span>
+      <span class="agent-badge">score_candidates</span>
+      <span class="agent-badge">assess_quality</span>
+    </div>
+  </div>
+
+  <div class="flow-area">
+    <!-- ROW 1 -->
+    <div class="flow-row">
+      <div class="card">
+        <div class="card-icon">&#9998;</div>
+        <div class="stage-label green">Stage 1</div>
+        <div class="card-title">JD Extraction</div>
+        <div class="card-desc">3-step clean/enrich/extract via LLM. Produces typed SearchSpec.</div>
+        <div class="card-agent">JDExtractionAgent._call_llm()</div>
+        <div class="card-tags"><span class="tag green">LLM Call &times;2</span></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-hitl">
+        <div class="card-icon">&#9995;</div>
+        <div class="hitl-label">HITL-1</div>
+        <div class="card-title">Recruiter reviews extracted spec</div>
+        <div class="card-desc">SSE: hitl_jd_review. Overrides validated against SearchSpec.</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#128269;</div>
+        <div class="stage-label green">Stage 2</div>
+        <div class="card-title">Query Generation</div>
+        <div class="card-desc">Boolean queries per source. Primary + fallback sets.</div>
+        <div class="card-agent">QueryGenerationAgent</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#127760;</div>
+        <div class="stage-label green">Stage 3</div>
+        <div class="card-title">Profile Fetching</div>
+        <div class="card-desc">Async parallel dispatch across integrations. Mock or live.</div>
+        <div class="card-agent">ProfileFetchingAgent</div>
+        <div class="card-tags"><span class="tag green">async parallel</span></div>
+      </div>
+    </div>
+
+    <div class="arrow-down-wrapper"><div class="arrow-down"></div></div>
+
+    <!-- ROW 2 -->
+    <div class="flow-row">
+      <div class="card">
+        <div class="card-icon">&#128279;</div>
+        <div class="stage-label green">Stage 4</div>
+        <div class="card-title">Deduplication</div>
+        <div class="card-desc">P1&ndash;P4 identity resolution. Pure Python, no LLM.</div>
+        <div class="card-agent">DeduplicationStage</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-hitl">
+        <div class="card-icon">&#9995;</div>
+        <div class="hitl-label">HITL-2</div>
+        <div class="card-title">Too few raw profiles?</div>
+        <div class="card-desc">Triggers if raw_count &lt; 15. Broaden, relax, or proceed.</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#128202;</div>
+        <div class="stage-label green">Stage 5</div>
+        <div class="card-title">Candidate Ranking</div>
+        <div class="card-desc">Weighted scoring + must-have gate. LLM generates NL reasoning.</div>
+        <div class="card-agent">RankingAgent</div>
+        <div class="card-tags"><span class="tag green">LLM reasoning</span></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-auto">
+        <div class="card-icon">&#9881;</div>
+        <div class="auto-label">Auto</div>
+        <div class="card-title">Quality Checker</div>
+        <div class="card-desc">Pure Python. Accept if enough, refine_broader if too few, force_accept at max iter.</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-final">
+        <div class="card-icon">&#10003;</div>
+        <div class="card-title">SSE Output</div>
+        <div class="report-item"><span class="report-dot dot-green"></span> Accepted (shortlist)</div>
+        <div class="report-item"><span class="report-dot dot-yellow"></span> Close (maybe)</div>
+        <div class="report-item"><span class="report-dot dot-red"></span> Rejected (dropped)</div>
+      </div>
+    </div>
+
+    <div class="feedback-loop">
+      <div class="loop-text">assess_quality &rarr; refine_broader / refine_location_relaxed &rarr; re-run from Stage 2</div>
+    </div>
+    <div class="loop-line"></div>
+  </div>
+
+  <div class="footer-bar">
+    <div class="footer-left">
+      <span class="footer-badge" style="background:#3b3d5c">In-Memory Pipeline</span>
+      <span class="footer-text">OrchestratorAgent holds state in _RunContext. Tool calls dispatched to Python agents. Per-request isolation.</span>
+    </div>
+    <span class="footer-right-badge">EventBus &rarr; SSE stream</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ TAB 3 ═══════════════════════════════ -->
+<div class="tab-panel" id="tab3">
+
+  <div class="pipeline-bar resume">
+    <div class="left">
+      <div class="icon-circle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div>
+        <div class="title">ResumeMatchPipeline + resume-matcher agent</div>
+        <div class="subtitle">Two implementations &mdash; Python class or Claude Code sub-agent &middot; evaluates uploaded resumes against JD</div>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="agent-badge">jd-extraction</span>
+      <span class="agent-badge">resume-parser</span>
+      <span class="agent-badge">scoring</span>
+      <span class="agent-badge">match-report</span>
+    </div>
+  </div>
+
+  <div class="flow-area">
+    <!-- ROW 1 -->
+    <div class="flow-row">
+      <div class="card">
+        <div class="card-icon">&#9998;</div>
+        <div class="stage-label purple">Step 1</div>
+        <div class="card-title">JD Extraction</div>
+        <div class="card-desc">Same 3-step process. Skipped if existing SearchSpec path provided.</div>
+        <div class="card-agent">JDExtractionAgent / Step 1</div>
+        <div class="card-tags"><span class="tag purple">OR load spec</span></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#128196;</div>
+        <div class="stage-label purple">Step 2</div>
+        <div class="card-title">Resume Parsing</div>
+        <div class="card-desc">PDF/text &rarr; structured profile. Skills, experience, education, certs.</div>
+        <div class="card-agent">ResumeParserAgent</div>
+        <div class="card-tags"><span class="tag purple">LLM extraction</span></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-skip">
+        <div class="skip-label">Skipped</div>
+        <div class="skip-text">No query gen, fetching, or dedup</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card">
+        <div class="card-icon">&#9878;</div>
+        <div class="stage-label purple">Step 3</div>
+        <div class="card-title">Scoring</div>
+        <div class="card-desc">Weighted formula + must-have gate. Generous matching (substring, alias).</div>
+        <div class="card-agent">RankingAgent / Step 3</div>
+        <div class="card-tags"><span class="tag amber">Must-have gate</span></div>
+      </div>
+    </div>
+
+    <div class="arrow-down-wrapper"><div class="arrow-down"></div></div>
+
+    <!-- ROW 2 -->
+    <div class="flow-row">
+      <div class="card" style="width: 200px;">
+        <div class="card-icon">&#128203;</div>
+        <div class="stage-label purple">Step 4</div>
+        <div class="card-title">Match Report</div>
+        <div class="card-desc">Score components, skill matches, seniority/location, strengths, gaps, interview recs.</div>
+        <div class="card-agent">03_match_report.json</div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card" style="width: 200px;">
+        <div class="card-icon">&#127942;</div>
+        <div class="stage-label purple">Step 5 &middot; Batch</div>
+        <div class="card-title">Ranked Comparison</div>
+        <div class="card-desc">Multiple resumes &rarr; ranked table. Bucket distribution, top candidates vs gaps.</div>
+        <div class="card-agent">04_ranked_candidates.json</div>
+        <div class="card-tags"><span class="tag purple">Multi-resume</span></div>
+      </div>
+      <div class="arrow-h"></div>
+      <div class="card-final" style="background: #1a472a;">
+        <div class="card-icon" style="background: #37b24d;">&#10003;</div>
+        <div class="card-title">Result</div>
+        <div class="report-item"><span class="report-dot dot-green"></span> Accepted (&ge;70%)</div>
+        <div class="report-item"><span class="report-dot dot-yellow"></span> Close (&ge;50%)</div>
+        <div class="report-item"><span class="report-dot dot-red"></span> Rejected (&lt;50%)</div>
+        <div class="report-item" style="margin-top: 3px; font-size: 9.5px; opacity: 0.7;">+ strengths, gaps, recs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <div class="footer-left">
+      <span class="footer-badge green">Reverse Pipeline</span>
+      <span class="footer-text">Evaluates uploaded resumes against the JD. Supports single resume or batch mode with ranked comparison.</span>
+    </div>
+    <span class="footer-right-badge">resume.pdf &rarr; match_report.json</span>
+  </div>
+</div>
+
+</div><!-- .shell -->
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
