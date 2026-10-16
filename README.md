@@ -221,7 +221,3 @@ Open these files in a browser for interactive visual documentation:
 - Three active sources: **Google CSE**, **Naukri**, **People Data Labs**. Additional sources slot in as pluggable modules under `integrations/`.
 
 ---
-
-## License
-
-Proprietary.
